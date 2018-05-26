@@ -2,10 +2,24 @@ var l = (function () {
     var mStorage = {
         // primitive elements - array
         els: 'a,address,applet,area,b,base,basefont,bgsound,big,blink,blockquote,body,br,button,caption,center,cite,code,colgroup,dd,del,div,dl,dt,em,embed,fieldset,font,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,hr,html,i,iframe,img,input,ins,label,legend,li,link,map,marquee,meta,nobr,noembed,noframes,noscript,object,ol,option,p,param,pre,q,rb,rp,rt,ruby,s,samp,script,select,small,span,strike,strong,style,sub,sup,table,tbody,td,textarea,tfoot,th,thead,title,tr,tt,u,ul,var'.split(','),
+        // store component class
         cels: {}
     }
 
-    // hyperscript
+    /**
+     * Create VDOM object
+     * 
+     * @param {string} tag 1st param - VDOM tag name
+     * !Important: tag can be html tag or custom tag.
+     * 
+     * If tag is html tag
+     * @param {object} attrs (pass null if not set) - 2nd param.
+     * @param {object} events (pass null if not set) - 3rd param.
+     * @param {object} childs (pass null if not set) - 4th param.
+     * 
+     * If tag is custom tag
+     * @param {object} data (pass null if not set) 2nd param - use if custom tag.
+     */
     var l = function (tag) {
         if (mStorage.els.includes(tag))
             return new VDOM(tag, arguments[1], arguments[2], arguments[3])
@@ -21,22 +35,31 @@ var l = (function () {
             throw 'VDOM ' + tag + " doesn't exist.";
     };
 
+    
     /**
-         * Return VDOM node.
-         * (Important)
-         * If tag is html tag (a, div, ...), VDOM without component will be return.
-         * If tag is custom tag, VDOM returned with component.
-         */
+     * Register custom component to l system.
+     * 
+     * @param {string} tag : component tag
+     * !Important about tag:
+     * - "a", "div",... or any html tag is invalid.
+     * - "todo", "to-do", "todo_", "to do", "anything but not html tag", ... are valid.
+     * 
+     * Set tag name as a namespace can reduce alot of conflict. E.g:
+     * 'com.company.project.component'
+     * 
+     * @param {*} componentFactory : a class which inherited from Component class,
+     * define template method which return VDOM.
+     */    
     l.register = function (tag, componentFactory) {
         mStorage.cels[tag] = componentFactory;
     }
 
     /**
-         * Register custom component.
-         * (Important)
-         * tag is not html tag (a, div, span, ...)
-         * tag name "todo", "to-do", "todo_", "to do", "anything but not html tag" are valid.
-         */
+     * Host specified component in DOM
+     * 
+     * @param {HTMLElement} dom Root node will be use to host component 
+     * @param {Component} component A component will be host
+     */
     l.attach = function(dom, component) {
         component.VDOM.parent = { DOM : dom };
         dom.appendChild(component.VDOM.DOM);
@@ -58,7 +81,7 @@ function VDOM(tag /*:string*/, attrs /*:object*/, events /*:object*/, childs /*A
             var vd = childs[i];
             // if child is not VDOM then convert it to VDOM
             if (!(typeof vd === 'object' && vd.DOM !== 0)) // childs check
-                vd = { DOM: document.createTextNode(childs[i]) }        
+                vd = { DOM: document.createTextNode(childs[i]), text: childs[i] /*easier for debug*/ }        
             vd.parent = m;
             m.childs.push(vd);
         }
@@ -146,7 +169,7 @@ function _update(oVD /*:VDOM*/, nVD /*:VDOM*/, prVD /*parent:VDOM*/, index /*ind
 
     } else {
         // in case some prop changes, update DOM1, link nVD to DOM1.
-        if (oVD.tag == '' && nVD.tag == '') { // text node  
+        if (oVD.tag == undefined && nVD.tag == undefined) { // text node  
             if (DOM1.data != nVD.DOM.data)  
                 DOM1.data =nVD.DOM.data
         }
