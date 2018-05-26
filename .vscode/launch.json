@@ -1,0 +1,13 @@
+{
+    // Using Debugger for Chrome to make your life better a litle bit.
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against localhost",
+            "url": "http://localhost:900",
+            "file": "${workspaceFolder}/index.html"
+        }
+    ]
+}
