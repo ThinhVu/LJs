@@ -3,7 +3,7 @@ var l = (function () {
         // primitive elements - array
         els: 'a,address,applet,area,b,base,basefont,bgsound,big,blink,blockquote,body,br,button,caption,center,cite,code,colgroup,dd,del,div,dl,dt,em,embed,fieldset,font,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,hr,html,i,iframe,img,input,ins,label,legend,li,link,map,marquee,meta,nobr,noembed,noframes,noscript,object,ol,option,p,param,pre,q,rb,rp,rt,ruby,s,samp,script,select,small,span,strike,strong,style,sub,sup,table,tbody,td,textarea,tfoot,th,thead,title,tr,tt,u,ul,var'.split(','),
         // store component class
-        cels: {}
+        customComponentFactories: {}
     }
 
     function BaseComponent(data) {
@@ -231,19 +231,25 @@ var l = (function () {
     var _ = function (tag) {
         if (mStorage.els.includes(tag))
             return new VDOM(tag, arguments[1], arguments[2], arguments[3])
-        else if (mStorage.cels.hasOwnProperty(tag)) {
+        else if (mStorage.customComponentFactories.hasOwnProperty(tag)) {
             // It's suck!
             // All I want is it just a view. Not link to any component.
             // But if its only link to the view, we cannot reuse logic of this component.
+            // So...it's suck but it good -_-
             var data = arguments[1]/*data object*/;
             var componentInstance = {};
             BaseComponent.call(componentInstance, data);
-            mStorage.cels[tag]/*Custom component function which use register*/.call(componentInstance);
+            mStorage.customComponentFactories[tag].call(componentInstance);
             return componentInstance.VDOM;
         }
         else
             throw 'VDOM ' + tag + " doesn't exist.";
     };
+
+    // settings
+    _.settings = {
+        overwriteOnRegister : false
+    }
 
     /**
      * Register custom component to l system.
@@ -259,8 +265,10 @@ var l = (function () {
      * @param {*} componentFactory : a class which inherited from Component class,
      * define template method which return VDOM.
      */
-    _.register = function (tag, componentFactory) {
-        mStorage.cels[tag] = componentFactory;
+    _.register = function (tag, customComponentFactory) {
+        if (mStorage.customComponentFactories.hasOwnProperty(tag) && !_.settings.overwriteOnRegister)
+            throw 'Component ' + tag + ' already exist.';
+        mStorage.customComponentFactories[tag] = customComponentFactory;
     }
 
     /**
