@@ -1,7 +1,5 @@
 l.register('tv.clock', function() {
     var m = this;
-    Component.call(m);
-    
     this.template = function(data) {
         return l('span', null, null, [new Date().toLocaleTimeString()])
     }
@@ -23,8 +21,6 @@ l.register('tv.clock', function() {
 
 l.register('tv.app', function(){
     var m = this;
-    Component.call(m);
-    
     this.template = function() {
         var clock = l('tv.clock');
         var start = l('button', null, {

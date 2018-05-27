@@ -5,7 +5,6 @@
 // TODOS
 l.register('todo-add', function () {
     var m = this;
-    Component.call(m);
 
     this.template = function () {
         var input = l('input', 
@@ -37,7 +36,6 @@ l.register('todo-add', function () {
 
 l.register('todo-item', function () {
     var m = this;
-    Component.call(m);
     this.template = function (data) {
         return l('li', null, null, [
             data.todo,
@@ -52,8 +50,6 @@ l.register('todo-item', function () {
 
 l.register('todo-list', function () {
     var m = this;
-    Component.call(this);
-
     this.template = function () {
         return l('ul', null, null, m.data.todos.map(function (todo, index) {
             return l('todo-item', {
@@ -70,7 +66,6 @@ l.register('todo-list', function () {
 
 l.register('todo', function () {
     var m = this;
-    Component.call(m);
     this.template = function (data) {
         var todoList = l('todo-list', {
             todos: _deepCopy(data.todos),
