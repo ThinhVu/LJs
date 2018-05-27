@@ -27,8 +27,7 @@ var l = (function () {
             // It's suck!
             // All I want is it just a view. Not link to any component.
             // But if its only link to the view, we cannot reuse logic of this component.
-            var component = new mStorage.cels[tag]();
-            component.init(arguments[1]/*data object*/);
+            var component = new mStorage.cels[tag](arguments[1]/*data object*/);            
             return component.VDOM;
         }
         else
@@ -61,7 +60,7 @@ var l = (function () {
      * @param {Component} component A component will be host
      */
     l.attach = function(dom, component) {
-        component.VDOM.parent = { DOM : dom };
+        component.VDOM.parent = { DOM : dom, childs: [component.VDOM] };
         dom.appendChild(component.VDOM.DOM);
     }
 
@@ -263,9 +262,12 @@ function _update(oVD /*:VDOM*/, nVD /*:VDOM*/, prVD /*parent:VDOM*/, index /*ind
     }
 }
 
-function Component() {
-    var m = this;    
-    m.init = function (data) { m.data = data || {} }
+function Component(data) {
+    var m = this;
+    // I concern about data access modifier
+    // public or private is better?
+    // and what happend in each case.
+    m.data = data || {}
 
     // vdom
     var mVDOM = null;

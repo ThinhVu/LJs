@@ -3,8 +3,14 @@
 <head>
     <title>Hello there</title>
     <meta charset="utf-8"/>    
-    <script src='l.js'></script>    
-    <script src='./samples/todo.js'></script>
+    <script src='l.js'></script>
+    <style>
+        .star { color: red; font-size: 30px; cursor: pointer; }        
+        .star.rated::after { content: '★'; }
+        .star.unrated::after { content: '☆'; }
+    </style>
+    <script src='./samples/rating.js'></script>
+    <!-- <script src='./samples/todo.js'></script> -->    
     <!-- <script src='./samples/clock.js'></script> -->
 </head>
 <body>
