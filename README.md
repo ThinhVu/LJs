@@ -8,8 +8,10 @@ Only take 15-20 minutes to read through the guide and you can practice immediate
 1. No addition dependencies (No nodejs, node babel, no lodash, no ES6, ...), open your text editor of choice and start typing just vanilla javascript.
 2. Easy to build from simple to complex component.
 3. IoC built-in, re-use component in flexible way.
-4. Explicit redraw + partial redraw.
-5. Core code is easy to read, so I can understand what really happen.
+4. Support view template re-use.
+5. DOM automatically update by explicit redraw.
+6. Just partial template redraw, not entire VDOM tree.
+6. Core code is easy to read, so you can understand what really happen.
 6. …
 
 ## what is what
@@ -32,7 +34,7 @@ So before we ready to make things using these libs, frameworks, we need spend a 
 
 That is the reason why I create ljs.
 
-ALl I want is to make a very simple framework (in both idea and implementation) which have the same important features as above libs, frameworks but take less time to learn (15-20 minutes is accepted).
+All I want is to make a very simple framework (in both idea and implementation) which have the same useful features as above libs, frameworks but take less time to learn (15-20 minutes is accepted).
 
 ### Why ljs
 I think 'l' - in lower case - is one of the most simple character, just a vertical line.
