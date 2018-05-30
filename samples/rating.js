@@ -1,4 +1,4 @@
-l.register('tv.star', function(){
+l.c.register('tv.star', function(){
     var m = this;
     m.template = function(d) {
         return l(
@@ -8,7 +8,7 @@ l.register('tv.star', function(){
     }
 })
 
-l.register('tv.rating.star', function(){
+l.c.register('tv.rating', function(){
     var m = this;
     m.template = function(d) {
         return l('div', null, null, [0,0,0,0,0].map(function(item, index) {
@@ -24,8 +24,6 @@ l.register('tv.rating.star', function(){
 })
 
 window.onload = function() {
-    var ratingStar = l('tv.rating.star', { score : 3 });
-    l.attach(
-        this.document.getElementById('app'), 
-        ratingStar.component)
+    var ratingStar = l.c('tv.rating', { score : 3 });
+    l.attach(this.document.getElementById('app'), ratingStar)
 }

@@ -1,304 +1,246 @@
-var l = (function () {
-    var mStorage = {
-        // primitive elements - array
-        els: 'a,address,applet,area,b,base,basefont,bgsound,big,blink,blockquote,body,br,button,caption,center,cite,code,colgroup,dd,del,div,dl,dt,em,embed,fieldset,font,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,hr,html,i,iframe,img,input,ins,label,legend,li,link,map,marquee,meta,nobr,noembed,noframes,noscript,object,ol,option,p,param,pre,q,rb,rp,rt,ruby,s,samp,script,select,small,span,strike,strong,style,sub,sup,table,tbody,td,textarea,tfoot,th,thead,title,tr,tt,u,ul,var'.split(','),
-        // store component class
-        customComponentFactories: {}
+
+var l = (function (setting) {
+    // common stuffs
+    var _directAttrNames = [];
+    var _setAttr = function (dom, name, val) {
+        if (_directAttrNames.includes(name))
+            dom[name] = val;
+        else
+            dom.setAttribute(name, val);
+    }
+    var _setEvent = function (dom, evName, evVal) {
+        if (dom.addEventListener)
+            dom.addEventListener(evName, evVal);
+        else
+            dom.attachEvent(evName, evVal);
     }
 
-    function BaseComponent(data) {
-        var m = this;
-        // I concern about data access modifier
-        // public or private is better?
-        // and what happend in each case.
-        m.data = data || {}
-
-        // vdom
-        var mVDOM = null;
-        var _initVDOM = function () { mVDOM = m.template(m.data); mVDOM.component = m; }
-        m.__defineSetter__('VDOM', function (vdom) { mVDOM = vdom })
-        m.__defineGetter__('VDOM', function () {
-            if (mVDOM == null)
-                _initVDOM();
-            return mVDOM;
-        })
-        m.redraw = function () {
-            if (mVDOM == null)
-                _initVDOM() // 1st revision
-            else
-                _update(mVDOM, m.template(m.data), mVDOM.parent, 0) // compare VDOM current and next revision
-        }
-        /**
-         * Generate virtual DOM from specified template
-         */
-        m.template = function () { throw "Not implemented exception"; }
-    }
-
-    function VDOM(tag /*:string*/, attrs /*:object*/, events /*:object*/, childs /*Array<primtive|VDOM>*/) {
-        var m = this;   // selft reference    
-        // make debug better   
-        if (tag != null) m.tag = tag;
-        if (attrs != null) m.attrs = attrs;
-        if (events != null) m.events = events;
-        if (childs != null && childs.length != 0) {
-            m.childs = [];
-            childs = childs || [];
-            for (var i = 0; i < childs.length; ++i) {
-                var vd = childs[i];
-                // if child is not VDOM then convert it to VDOM
-                if (!(typeof vd === 'object' && vd.DOM !== 0)) // childs check
-                    vd = { DOM: document.createTextNode(childs[i]), text: childs[i] /*easier for debug*/ }
-                vd.parent = m;
-                m.childs.push(vd);
-            }
-        }
-
-        var mDOM = 0; // by pass undefined in childs check
-        // defer create DOM object
-        m.__defineGetter__('DOM', function () {
-            if (mDOM === 0) {
-                mDOM = document.createElement(tag || '');
-                for (var a in m.attrs)
-                    mDOM.setAttribute(a, m.attrs[a]);
-                for (var e in m.events)
-                    mDOM.addEventListener(e, m.events[e]);
-                for (var c in m.childs)
-                    mDOM.appendChild(m.childs[c].DOM)
-            }
-            return mDOM;
-        })
-        m.__defineSetter__('DOM', function (DOM) {
-            mDOM = DOM
-        })
-    }
-
-
-    /**
-    * 
-    * @param {VDOM} oVD : Is a VDOM, DOM element of this VDOM already mounted to document object 
-    * @param {*} nVD : Is a new VDOM, DOM element of this VDOM is not linked to document object
-    * @param {*} prVD : Is a parent VDOM, DOM element of this VDOM already mounted to document object.
-    * @param {*} index : Index of oVD in prVD.childs
-    *
-    * _update function update both VDOM and DOM
-    */
-    function _update(oVD /*:VDOM*/, nVD /*:VDOM*/, prVD /*parent:VDOM*/, index /*index of oVD:int*/) {
-        var DOM1 = oVD.DOM;   // mounted DOM
-        if (oVD.tag != nVD.tag) {
-            // in case entire element change, unmount DOM1, mount new DOM
-            try {
-                prVD.DOM.insertBefore(nVD.DOM, DOM1.nextSibling || undefined);
-                prVD.DOM.removeChild(DOM1);
-            } catch (e) {
-                console.log(e);
-            }
-
-        } else {
-            // in case some prop changes, update DOM1, link nVD to DOM1.
-            if (oVD.tag == undefined && nVD.tag == undefined) { // text node  
-                if (DOM1.data != nVD.DOM.data)
-                    DOM1.data = nVD.DOM.data
-            }
-            else { // HTMLElement
-                var adif = _diff(oVD.attrs, nVD.attrs);
-                // 1.1) update attr
-                for (var a in adif) {
-                    switch (adif[a]) {
-                        case 1: // add
-                        case 3: // update      
-                            // 1) add/update DOM attr                  
-                            // setAttribute value,... will not take any affect to HTMLElement
-                            // so we need change it directly by property value
-                            if (a == 'value')
-                                DOM1['value'] = nVD.attrs[a];
-                            else
-                                DOM1.setAttribute(a, nVD.attrs[a]);
-                            // 2) add/update VDOM attr
-                            oVD.attrs[a] = nVD.attrs[a];
-                            break;
-                        case 2: // remove
-                            // remove DOM attr
-                            DOM1.removeAttribute(a);
-                            // remove VDOM attr
-                            oVD.attrs[a] = undefined;
-                            break;
-                    }
-                }
-
-                // 2) compare events
-                // 2.2) update events
-                var eventDiff = _diff(oVD.events, nVD.events);
-                for (var p in eventDiff) {
-                    switch (eventDiff[p]) {
-                        case 1: // add
-                        case 3: // update                                       
-                            // Simple trick, does it's a bug?
-                            if (oVD.events[p].toString() != nVD.events[p].toString()) {
-                                // unlink event first, if not, events will be stacked
-                                DOM1.removeEventListener(p, oVD.events[p]);
-                                DOM1.addEventListener(p, nVD.events[p])
-                                // VDOM
-                                oVD.events[p] = nVD.events[p];
-                            }
-                            break;
-                        case 2: // remove
-                            // DOM           
-                            DOM1.removeEventListener(p, oVD.events[p])
-                            // VDOM
-                            oVD.events[p] = undefined;
-                            break;
-                    }
-                }
-
-                // 3) compare childs
-                // 3.2) update childs
-                // unkeyed diff
-                // TODO: apply keyed diff to reduce DOM changes
-                var oChildLen = oVD.childs != undefined ? oVD.childs.length : 0;
-                var nChildLen = nVD.childs != undefined ? nVD.childs.length : 0;
-                var maxChildLen = oChildLen > nChildLen ? oChildLen : nChildLen;
-                for (var i = maxChildLen; i > 0; i--) {
-                    if (i > oChildLen) {
-                        // add  
-                        DOM1.appendChild(nVD.childs[i - 1].DOM);
-
-                        oVD.childs.push(nVD.childs[i - 1]);
-                    } else {
-                        // update or remove
-                        if (i > nChildLen) {
-                            // remove                        
-                            var childi = DOM1.childNodes[i - 1];
-                            DOM1.removeChild(childi);
-
-                            oVD.childs.splice(i - 1, 1);
-                        } else {
-                            // update
-                            var ochildi = oVD.childs[i - 1];
-                            var nchildi = nVD.childs[i - 1];
-                            _update(ochildi, nchildi, oVD, i - 1);
-                        }
-                    }
-                }
-
-                // link to DOM1
-                nVD.DOM = DOM1;
-            }
-
-            // update VDOM
-            prVD.childs[index] = nVD;
-        }
-    }
-
-
-    // detect change of 2 object
-    // returned object with all prop of both 2 object.
-    // and value of each key will be: (0) unchange, (1) add, (2) remove, (3) update
-    function _diff(now /*object*/, next /*object*/) {
-        // add all prop to ps object
-        var ps = {}
+    var _diffs = { nochange: 0, add: 1, remove: 2, update: 3 }
+    var _diff = function (now, next) {
+        var ps = {};
         for (var p in now)
-            ps[p] = 0;
+            ps[p] = _diffs.nochange;
         for (var p in next)
-            ps[p] = 0;
-        // diff
+            ps[p] = _diffs.nochange;
         for (var p in ps) {
-            if (!now.hasOwnProperty(p)) // now not have, next have => add
-                ps[p] = 1;
-            else if (!next.hasOwnProperty(p)) // now have, next not have => remove
-                ps[p] = 2;
-            else if (now[p] !== next[p]) // otherwise, depend on value, it will be update or unchange.
-                ps[p] = 3;
+            if (!now.hasOwnProperty(p))
+                ps[p] = _diffs.add;
+            else if (!next.hasOwnProperty(p))
+                ps[p] = _diffs.remove;
+            else if (now[p] !== next[p])
+                ps[p] = _diffs.update;
         }
         return ps;
     }
 
-
-    ///////////public///////////////////
-    /**
-     * Create VDOM object
-     * 
-     * @param {string} tag 1st param - VDOM tag name
-     * !Important: tag can be html tag or custom tag.
-     * 
-     * If tag is html tag
-     * @param {object} attrs (pass null if not set) - 2nd param.
-     * @param {object} events (pass null if not set) - 3rd param.
-     * @param {object} childs (pass null if not set) - 4th param.
-     * 
-     * If tag is custom tag
-     * @param {object} data (pass null if not set) 2nd param - use if custom tag.
-     */
-    var _ = function (tag) {
-        if (mStorage.els.includes(tag))
-            return new VDOM(tag, arguments[1], arguments[2], arguments[3])
-        else if (mStorage.customComponentFactories.hasOwnProperty(tag)) {
-            // It's suck!
-            // All I want is it just a view. Not link to any component.
-            // But if its only link to the view, we cannot reuse logic of this component.
-            // So...it's suck but it good -_-
-            var data = arguments[1]/*data object*/;
-            var componentInstance = {};
-            BaseComponent.call(componentInstance, data);
-            mStorage.customComponentFactories[tag].call(componentInstance);
-            return componentInstance.VDOM;
+    // Lelement
+    function Lelement() { }
+    Lelement.prototype.template = function () { throw "Not implemented exception"; }
+    Lelement.prototype.redraw = function () {
+        if (this._VDOM == null) {
+            this._VDOM = this.template(this.data);
+            this._VDOM.component = this;
         }
-        else
-            throw 'VDOM ' + tag + " doesn't exist.";
+        else {
+            this._VDOM.update(this.template(this.data));
+        }
+    }
+    Object.defineProperty(Lelement.prototype, "VDOM", {
+        get: function () {
+            if (this._VDOM == null) {
+                this._VDOM = this.template(this.data);
+                this._VDOM.component = this;
+            }
+            return this._VDOM;
+        },
+        set: function (vdom) {
+            this._VDOM = vdom;
+        },
+        configurable: true,
+        enumerable: true,
+    });
+
+    // VDOM
+    function VDOM(tag, attrs, events, childs) {
+        var m = this;
+        if (tag != null) m.tag = tag;
+        if (attrs != null) m.attrs = attrs;
+        if (events != null) m.events = events;
+        m.childs = [];
+        // flatten child array
+        function addChild(cs) {
+            if (cs != null && cs.length != 0) {
+                for (var i = 0; i < cs.length; ++i) {
+                    var vd = cs[i];
+                    if (Array.isArray(vd)) {
+                        addChild(vd);
+                    }
+                    else {
+                        if (!(typeof vd === 'object' && vd.update !== undefined)) {
+                            vd = {
+                                DOM: document.createTextNode(cs[i]),
+                                text: cs[i],
+                                update: function (next) {
+                                    this.DOM.data = next.text;
+                                    this.text = next.text;
+                                }
+                            }
+                        }
+                        vd.parent = m;
+                        m.childs.push(vd);
+                    }
+                }
+            }
+        }
+
+        addChild(childs);
+    }
+    VDOM.prototype.update = function (nextVDOM) {
+        if (this.tag != nextVDOM.tag) {
+            this.parent.DOM.insertBefore(nextVDOM.DOM, this.DOM.nextSibling || undefined);
+            this.parent.DOM.removeChild(this.DOM);
+            this.parent.childs[this.parent.childs.indexOf(this)] = nextVDOM;
+        } else {
+
+            // HTMLElement                
+            var adif = _diff(this.attrs, nextVDOM.attrs);
+            for (var a in adif) {
+                switch (adif[a]) {
+                    case _diffs.add:
+                    case _diffs.update:
+                        if (a == 'value')
+                            this.DOM['value'] = nextVDOM.attrs[a];
+                        else
+                            this.DOM.setAttribute(a, nextVDOM.attrs[a]);
+                        this.attrs[a] = nextVDOM.attrs[a];
+                        break;
+                    case _diffs.remove:
+                        this.DOM.removeAttribute(a);
+                        this.attrs[a] = undefined;
+                        break;
+                }
+            }
+
+            var edif = _diff(this.events, nextVDOM.events);
+            for (var p in edif) {
+                switch (edif[p]) {
+                    case _diffs.add:
+                    case _diffs.update:
+                        if (this.events[p].toString() != nextVDOM.events[p].toString()) {
+                            this.DOM.removeEventListener(p, this.events[p]);
+                            this.DOM.addEventListener(p, nextVDOM.events[p]);
+                            this.events[p] = nextVDOM.events[p];
+                        }
+                        break;
+                    case _diffs.remove:
+                        this.DOM.removeEventListener(p, this.events[p]);
+                        this.events[p] = undefined;
+                        break;
+                }
+            }
+            // TODO: apply keyed diff to reduce DOM changes
+            var oChildLen = this.childs != undefined ? this.childs.length : 0;
+            var nChildLen = nextVDOM.childs != undefined ? nextVDOM.childs.length : 0;
+            var maxChildLen = oChildLen > nChildLen ? oChildLen : nChildLen;
+            for (var i = maxChildLen; i > 0; i--) {
+                if (i > oChildLen) {
+                    // add
+                    this.DOM.appendChild(nextVDOM.childs[i - 1].DOM);
+                    this.childs.push(nextVDOM.childs[i - 1]);
+                } else {
+                    if (i > nChildLen) {
+                        // remove
+                        this.DOM.removeChild(this.DOM.childNodes[i - 1]);
+                        this.childs.splice(i - 1, 1);
+                    } else {
+                        // update
+                        this.childs[i - 1].update(nextVDOM.childs[i - 1]);
+                    }
+                }
+            }
+        }
+    }
+    Object.defineProperty(VDOM.prototype, "DOM", {
+        get: function () {
+            if (this._DOM == undefined) {
+                this._DOM = document.createElement(this.tag || '');
+                for (var a in this.attrs) {
+                    _setAttr(this._DOM, a, this.attrs[a]);
+                }
+                for (var e in this.events) {
+                    _setEvent(this._DOM, e, this.events[e]);
+                }
+                for (var c in this.childs) {
+                    this._DOM.appendChild(this.childs[c].DOM)
+                }
+            }
+            return this._DOM;
+        },
+        set: function (dom) {
+            this._DOM = dom;
+        },
+        enumerable: true,
+        configurable: true
+    });
+
+
+    // l stuffs
+    var _defaults = 'a,address,applet,area,b,base,basefont,bgsound,big,blink,blockquote,body,br,button,caption,center,cite,code,colgroup,dd,del,div,dl,dt,em,embed,fieldset,font,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,hr,html,i,iframe,img,input,ins,label,legend,li,link,map,marquee,meta,nobr,noembed,noframes,noscript,object,ol,option,p,param,pre,q,rb,rp,rt,ruby,s,samp,script,select,small,span,strike,strong,style,sub,sup,table,tbody,td,textarea,tfoot,th,thead,title,tr,tt,u,ul,var'.split(',');
+    var _customs = {};
+
+    // element
+    var m = function (tag) {
+        if (_defaults.includes(tag)) {
+            return new VDOM(tag, arguments[1], arguments[2], arguments[3]);
+        }
+        else if (_customs.hasOwnProperty(tag)) {
+            return m.c(tag, arguments[1]).VDOM;
+        }
+        else {
+            throw "VDOM " + tag + " missing.";
+        }
     };
 
-    // settings
-    _.settings = {
-        overwriteOnRegister : false
+    // component
+    m.c = function (tag, data) {
+        if (_customs.hasOwnProperty(tag)) {
+            var o = new _customs[tag]();
+            o.data = data;
+            return o;
+        }
+        else {
+            throw "Missing " + tag + " component";
+        }
+    }
+    m.c.register = function (tag, ctor) {
+        if (_customs.hasOwnProperty(tag) && !m.setting.overwrite)
+            throw "Component " + tag + " already exist.";
+        ctor.prototype = Object.create(Lelement.prototype);
+        ctor.prototype.constructor = ctor;
+        _customs[tag] = ctor;
     }
 
-    /**
-     * Register custom component to l system.
-     * 
-     * @param {string} tag : component tag
-     * !Important about tag:
-     * - "a", "div",... or any html tag is invalid.
-     * - "todo", "to-do", "todo_", "to do", "anything but not html tag", ... are valid.
-     * 
-     * Set tag name as a namespace can reduce alot of conflict. E.g:
-     * 'com.company.project.component'
-     * 
-     * @param {*} componentFactory : a class which inherited from Component class,
-     * define template method which return VDOM.
-     */
-    _.register = function (tag, customComponentFactory) {
-        if (mStorage.customComponentFactories.hasOwnProperty(tag) && !_.settings.overwriteOnRegister)
-            throw 'Component ' + tag + ' already exist.';
-        mStorage.customComponentFactories[tag] = customComponentFactory;
+    // ...
+    m.setting = setting;
+    m.attach = function (dom, cpn) {
+        cpn.VDOM.parent = { DOM: dom, childs: [cpn.VDOM] };
+        dom.appendChild(cpn.VDOM.DOM);
     }
-
-    /**
-     * Host specified component in DOM
-     * 
-     * @param {HTMLElement} dom Root node will be use to host component 
-     * @param {Component} component A component will be host
-     */
-    _.attach = function (dom, component) {
-        component.VDOM.parent = { DOM: dom, childs: [component.VDOM] };
-        dom.appendChild(component.VDOM.DOM);
+    m.deepCopy = function (origin) {
+        if (Array.isArray(origin)) {
+            var arr = [];
+            for (var i = 0; i < origin.length; ++i)
+                arr[i] = _deepCopy(origin[i]);
+            return arr;
+        }
+        else if (typeof origin === 'object') {
+            var clone = {};
+            for (var i in obj)
+                clone[i] = _deepCopy(origin[i]);
+            return clone;
+        }
+        else
+            return origin;
     }
-
-    return _;
-})();
-
-// deep copy
-function _deepCopy(origin /*:object | Array | primitive*/) {
-    if (Array.isArray(origin)) {
-        var arr = [];
-        for (var i = 0; i < origin.length; ++i)
-            arr[i] = _deepCopy(origin[i]);
-        return arr;
-    }
-    else if (typeof origin === 'object') {
-        var clone = {};
-        for (var i in obj)
-            clone[i] = _deepCopy(origin[i]);
-        return clone;
-    }
-    else
-        return origin; // primitive, function
-}
+    return m;
+})({ overwrite: false });
