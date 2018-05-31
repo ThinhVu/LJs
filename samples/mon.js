@@ -404,22 +404,19 @@ window.onload = function() {
       
       
       
-        return  {
-      
-          generateData: getData,
-      
-          rows: 50,
-      
-          timeout: 0,
-      
-          mutations: mutations
-      
+        return  {      
+          generateData: getData,      
+          rows: 50,      
+          timeout: 1,      
+          mutations: mutations      
         };
-      
       })();
+
+
     perfMonitor.startFPSMonitor()
     perfMonitor.startMemMonitor()
-    perfMonitor.initProfiler("render")
+    perfMonitor.initProfiler("render");
+
     var data = []
     l.c.register('perf-mon', function () {
         this.template = function () {
