@@ -1,13 +1,13 @@
 var l = (function (setting) {
     // common stuffs
     var _directAttrNames = {'value':null};
-    var _setAttr = function (dom, name, val) {
+    function _setAttr(dom, name, val) {
         if (_directAttrNames.hasOwnProperty(name))
             dom[name] = val;
         else
             dom.setAttribute(name, val);
     }
-    var _setEvent = function (dom, evName, evVal) {
+    function _setEvent(dom, evName, evVal) {
         if (dom.addEventListener)
             dom.addEventListener(evName, evVal);
         else if (dom.attachEvent)
@@ -15,11 +15,12 @@ var l = (function (setting) {
         else
             dom['on' + evName] = evVal;
     }
+    // diff
     var _dNoChange = 0;
     var _dAdd = 1;
     var _dUpdate = 2;
     var _dRemove = 3;
-    var _diff = function (now, nxt) {
+    function _diff(now, nxt) {
         var ps = {};
         for (var p in now) {
             ps[p] = (!nxt.hasOwnProperty(p)) ? _dRemove:
@@ -31,47 +32,20 @@ var l = (function (setting) {
         }
         return ps;
     }
-    var _deepCopy = function(origin) {
-        if (Array.isArray(origin)) {
-            var arr = [];
-            for (var i = 0; i < origin.length; ++i)
-                arr[i] = _deepCopy(origin[i]);
-            return arr;
-        }
-        else if (typeof origin === 'object') {
-            var clone = {};
-            for (var i in obj)
-                clone[i] = _deepCopy(origin[i]);
-            return clone;
-        }
-        else
-            return origin;
-    }
+    
     // LComp
-    function LComp(data) {
-        this._data = data;
-        this.setData = function(nData, skip) {
-            var change = false;
-            for(var p in nData) {
-                if (this._data[p] != nData[p]) {
-                    this._data[p] = nData[p];
-                    change = true;
-                }
-            }
-            if (skip) return;
-            if (change) this.prototype.redraw();
-        }
+    function LComp() {                
     }
     LComp.prototype.template = function () {
         throw "Not implemented exception";
     }
     LComp.prototype.redraw = function () {
         if (this._VDOM == null) {
-            this._VDOM = this.template(_deepCopy(this._data));
+            this._VDOM = this.template();
             this._VDOM.component = this;
         }
         else {
-            this._VDOM.update(this.template(_deepCopy(this._data)));
+            this._VDOM.update(this.template());
         }
     }
     Object.defineProperty(LComp.prototype, "VDOM", {
@@ -106,8 +80,10 @@ var l = (function (setting) {
                         DOM: document.createTextNode(cs[i]),
                         text: cs[i], // verbose
                         update: function(nxt) {
-                            this.DOM.data = nxt.text;
-                            this.text = nxt.text;
+                            if (this.text != nxt.text) {
+                                this.DOM.data = nxt.text;
+                                this.text = nxt.text;
+                            }                            
                         }
                     }
                 }
@@ -128,11 +104,27 @@ var l = (function (setting) {
         m.childs = [];
         _addChild(m, childs);
     }
-    VDOM.prototype.update = function (nxt) {
+    // check VDOM child key is duplicate    
+    VDOM.prototype.isChildNoDuplicateKey = function(){
+        var ks = {};
+        var noDup = true;
+        for(var i in this.childs) {
+            if (ks.hasOwnProperty(this.childs[i].attrs.key)) {
+                noDup = false;
+                break;
+            }
+            else {
+                ks[this.childs[i].attrs.key] = 0;
+            }
+        }
+        return noDup;
+    }
+    // update
+    VDOM.prototype.update = function (nxt) {        
         // facebook reconciliation impl
         // 1st assumption: if tag diff, redraw entire tree.
         if (this.tag != nxt.tag) 
-        {
+        {            
             // Almost, if not all case it doesn't matter detach old node or attach new node first.  
             var nxtSbl = this.DOM.nextSibling || undefined;
             // life cycle of DOM
@@ -153,15 +145,15 @@ var l = (function (setting) {
         } 
         else 
         {
-            var adif = _diff(this.attrs, nxt.attrs);            
+            var adif = _diff(this.attrs, nxt.attrs);
             for (var a in adif) {
                 switch (adif[a]) {
                     case _dAdd:
-                    case _dUpdate:
+                    case _dUpdate:                        
                         _setAttr(this.DOM, a, nxt.attrs[a]);
                         this.attrs[a] = nxt.attrs[a];
                         break;
-                    case _dRemove:
+                    case _dRemove:                        
                         this.DOM.removeAttribute(a);
                         this.attrs[a] = undefined;
                         break;
@@ -172,13 +164,14 @@ var l = (function (setting) {
                 switch (edif[p]) {
                     case _dAdd:
                     case _dUpdate:
-                        if (this.events[p].toString() != nxt.events[p].toString()) {
+                        //if (this.events[p].toString() != nxt.events[p].toString()) 
+                        {                            
                             this.DOM.removeEventListener(p, this.events[p]);
                             _setEvent(this.DOM, p, nxt.events[p]);
                             this.events[p] = nxt.events[p];
                         }
                         break;
-                    case _dRemove:
+                    case _dRemove:                        
                         this.DOM.removeEventListener(p, this.events[p]);
                         this.events[p] = undefined;
                         break;
@@ -187,47 +180,61 @@ var l = (function (setting) {
             var empty = [];
             var nLen = (this.childs || empty).length;
             var nxtLen = (nxt.childs || empty).length;
-            var keyed = false;
-            if (nLen && this.childs[0].attrs && this.childs[0].attrs.hasOwnProperty['key'])
-                keyed = true;
+
+            // diffing by key if and only if:
+            // - old DOM have at least one child with key attr
+            // - no duplicate child key in both old and new dom
+            var keyed = nLen && 
+                this.childs[0].attrs && 
+                this.childs[0].attrs.hasOwnProperty('key') && 
+                this.isChildNoDuplicateKey() && 
+                nxt.isChildNoDuplicateKey();
+
             if (keyed) {
+                console.log('keyed diff');
+                var frag = document.createDocumentFragment();
+                frag.appendChild(this.DOM); // detach current DOM
                 // 2nd assumption: keyed childrend node diffing.
                 // old_childs = [ {key:1, VDOM:..}, {key: 2, VDOM:..} ]
                 // new_childs = [ {key:3, VDOM:..}, {key: 1, VDOM:..}, {key:2, DOM:html}]
                 var oldKeys = {}; // { 1: VDOM, 2: VDOM, 3: VDOM}
-                for(var i in this.childs) {
-                    oldKeys[this.childs[i].attrs.key] = this.childs[i];
-                }
                 var newKeys = {};
-                for(var i in nxt.childs) {
-                    newKeys[nxt.childs[i].attrs.key] = nxt.childs[i];
-                }
+                for(var i in this.childs) { oldKeys[this.childs[i].attrs.key] = this.childs[i]; }
+                for(var i in nxt.childs) { newKeys[nxt.childs[i].attrs.key] = nxt.childs[i]; }
+
                 // remove childs element which doesn't appear in new childs DOM
                 for(var i in oldKeys) {
                     if (!newKeys.hasOwnProperty(i)) {
-                        oldKeys[i].beforeDetach && oldKeys[i].beforeDetach();
+                        //oldKeys[i].beforeDetach && oldKeys[i].beforeDetach();
                         this.DOM.removeChild(oldKeys[i].DOM); // remove DOM
-                        oldKeys[i].afterDetach && oldKeys[i].afterDetach();
+                        //oldKeys[i].afterDetach && oldKeys[i].afterDetach();
                         this.childs.splice(this.childs.indexOf(oldKeys[i]), 1); // remove VDOM
                     }
                 }
+                
                 // update or add new
+                // loop through nxt.childs because we need ordered childs
+                // if we loop through newKeys, order will be changed depend on key name.
                 for(var i in nxt.childs) {
-                    var nKey = nxt.childs[i].attrs.key;
-                    if (oldKeys.hasOwnProperty(nKey)) {
-                        // update
-                        frag.appendChild(oldKeys[nKey].DOM); /*detach DOM*/
-                        oldKeys[nKey].update(nxt.childs[i]); /*and update DOM*/
+                    var key = nxt.childs[i].attrs.key;
+                    if (oldKeys.hasOwnProperty(key)) {
+                        oldKeys[key].update(newKeys[key]);
                     }
                     else {
                         // add new
-                        newKeys[nKey].beforeAttach && newKeys[nKey].beforeAttach();
-                        frag.appendChild(newKeys[nKey].DOM);
-                        newKeys[nKey].afterAttach && newKeys[nKey].afterAttach();
-                        this.childs.push(newKeys[nKey]);
+                        if (i == 0) { // insert at 1st position
+                            this.DOM.insertBefore(newKeys[key].DOM, this.childs[0].DOM);
+                        } else {
+                            // insert at the middle or the last
+                            //newKeys[nKey].beforeAttach && newKeys[nKey].beforeAttach();
+                            this.DOM.insertBefore(newKeys[key].DOM, this.childs[i-1].DOM.nextSibling || undefined);
+                            //newKeys[nKey].afterAttach && newKeys[nKey].afterAttach();
+                        }
+                        this.childs.splice(i, 0, newKeys[key]);
                     }
                 }
-                this.DOM.appendChild(frag);
+                // attach
+                this.parent.DOM.appendChild(frag);
             }
             else {
                 // naively implement - iterates over both lists of children at the same time
@@ -238,7 +245,7 @@ var l = (function (setting) {
                         this.childs.splice(i, 1);
                         i--;
                     }
-                    while(i != nxtLen)
+                    while(i > nxtLen)
                 }
                 else if (nLen < nxtLen) {
                     // add
@@ -276,9 +283,12 @@ var l = (function (setting) {
         enumerable: false,
         configurable: true
     });
+
+
+
     // l stuffs
-    var _defaults = 'a,address,applet,area,b,base,basefont,bgsound,big,blink,blockquote,body,br,button,caption,center,cite,code,colgroup,dd,del,div,dl,dt,em,embed,fieldset,font,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,hr,html,i,iframe,img,input,ins,label,legend,li,link,map,marquee,meta,nobr,noembed,noframes,noscript,object,ol,option,p,param,pre,q,rb,rp,rt,ruby,s,samp,script,select,small,span,strike,strong,style,sub,sup,table,tbody,td,textarea,tfoot,th,thead,title,tr,tt,u,ul,var'.split(',');
-    var _customs = {};
+    var _defaults = 'a,address,applet,area,article,aside,b,base,basefont,bdi,bgsound,big,blink,blockquote,body,br,button,caption,center,cite,code,colgroup,dd,del,details,dialog,div,dl,dt,em,embed,fieldset,figcaption,figure,font,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,i,iframe,img,input,ins,label,legend,li,link,main,map,mark,marquee,menuitem,meta,meter,nav,nobr,noembed,noframes,noscript,object,ol,option,p,param,pre,progress,q,rb,rp,rt,ruby,s,samp,script,select,section,small,span,strike,strong,style,sub,summary,sup,table,tbody,td,time,textarea,tfoot,th,thead,title,tr,tt,u,ul,var,wbr'.split(',');
+    var _customs = {};    
     // element
     var l = function (tag) {
         if (_defaults.includes(tag))
@@ -287,10 +297,10 @@ var l = (function (setting) {
             return l.c(tag, arguments[1]).VDOM;
     };
     // component
-    l.c = function (tag, data) {
+    l.c = function(tag, dataService) {
         if (_customs.hasOwnProperty(tag)) {
             var o = new _customs[tag]();
-            o.data = data;
+            o.dataService = dataService;
             return o;
         }
         else {
@@ -304,7 +314,7 @@ var l = (function (setting) {
         ctor.prototype.constructor = ctor;
         _customs[tag] = ctor;
     }
-    // ...
+    // stuff
     l.setting = setting;
     l.attach = function (dom, cpn) {
         cpn.VDOM.parent = { DOM: dom, childs: [cpn.VDOM] };
