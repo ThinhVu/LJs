@@ -31,15 +31,16 @@ l.register('todo-item-list', function(){
 
 l.register('todo', function(){
     this.template = function(a, e) {
+        var m = this;
         var todoForm = l('todo-form', { todo: a.todo }, { 
             onInput: function(e) { 
                 a.todo = e.target.value;
-                this.f5(); 
+                m.ctx.f5();
             },
             onAdd: function(e) {
                 a.todos.push(a.todo);
                 a.todo = '';
-                this.f5();
+                m.ctx.f5();
             }
         });
         var todoItemList = l('todo-item-list', { todos: a.todos });

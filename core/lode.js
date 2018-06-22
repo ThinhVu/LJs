@@ -63,7 +63,7 @@ function Lode(tag, attrs, events, childs) {
      * @returns {Lode} a Lode tree
      */
     m.template = function (attrs, events, childs) { throw "Not impl" };
-    
+    m.__defineGetter__('ctx', function() { return this; });
     m.toVDOM = function() {
         var vdom;        
         if (_tags.includes(this.tag)) {
