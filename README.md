@@ -15,26 +15,25 @@ Only take 15-20 minutes to read through the guide and you can practice immediate
 6. …
 
 ## what is what
-ljs is an virtual DOM based javascript framework which help you manipulate the DOM automatically.
+ljs is an virtual DOM based js framework which help you manipulate the DOM automatically.
 
-It similar to a lot of well known libraries, frameworks: [ReactJs](https://reactjs.org/), [VueJs](https://vuejs.org/), [MitrhilJs](https://mithril.js.org/), [Bobril](http://bobril.com/),
+It similar to a lot of well-known libs, frameworks like: [ReactJs](https://reactjs.org/), [VueJs](https://vuejs.org/), [MitrhilJs](https://mithril.js.org/), ...
 
 ### Reason
-Now a day, we have a lot js libraries, frameworks which automatically manipulate DOM. Using these libs, frameworks make our web app easier to develop, maintain, scale, etc...
+Now a day, we have a lot js libs, frameworks which automatically update DOM when data change. Using these libs, frameworks make our web application easier to develop, maintain, etc...
 
-Each libs, frameworks have their strength and weakness. And performance of these libraries, frameworks also very good too.
+Each libs, frameworks have their strength and weakness. Performance of these libraries, frameworks also very good too.
 
 #### So what is the reason why I continue to re-invent the wheel?
 
-The problem is some of these libs, frameworks is too complex. It come up with a lot of useful tools, well design dependency libs, different architect design (angularjs), etc,....
-
-And the core code is hard to read for new comer.
+The problem is some of these libs, frameworks is too complex. So to make it easier to use, a lot of tools has been developed too,...
+Another reason is the core of these libs, framework is also hard to understand for new comer.
 
 So before we ready to make things by using these libs, frameworks, we need spend a lot of time to learn to understand what is what, and what do what. (Of course, it worthy, but sometimes it still hurt.)
 
-That is the reason why I create ljs.
+That why I create ljs.
 
-All I want is to make a very simple framework (in both idea and implementation) which have the same useful features as above libs, frameworks but take less time to learn (15-20 minutes is accepted).
+All I want is to make a very simple framework (in both idea and implementation) which have the same features as above libs, frameworks but take less time to learn (15-20 minutes is accepted).
 
 ### Why ljs
 I think 'l' - in lower case - is one of the most simple character, just a vertical line.
@@ -42,17 +41,15 @@ And I want this framework should simple too, just like its name.
 
 To understand how ljs works, we have to learn the design idea of its concepts like VDOM, component.
 
-
 ### Main idea
-The main idea of ljs is it allow developer define a custom, complex component from simple HTMLElement in easiest way, and using this component just like using native HTML Element. Make sense?
+The main idea of ljs is it allow developer define a custom, complex component from registered component in easiest way, and using this component just like using native HTML Element. Make sense?
 
 To fully understand what ljs is, we need to know:
-1. ljs component structure.
-2. ljs mecharnism to update DOM tree.
+1. ljs component.
+2. ljs mecharnism to update live DOM.
 
-#### ljs component structure
-The first thing to know in ljs is component structure.
-To explain the concept of ljs component structure in a simple way. I have a HTMLElement tree like so:
+#### ljs component
+To explain the concept of ljs component in a simple way, I create a HTMLElement tree like so:
 ```
 <div id='todo'>
     <form>
@@ -70,119 +67,139 @@ To explain the concept of ljs component structure in a simple way. I have a HTML
 In this tree, we can see these is a lot of native HTMLElements like div, form, input, button, ul, li.
 Native HTMLElement have a lot of things inside it, but what we only need to care about is only tag, attributes and events (like above example).
 
-Everytime create a HTMLElement, we need to provide a tag name, a custom attributes and events. Like so:
+To create a HTMLElement, we need to provide a tag name, a custom attributes and events like so:
 ```
-<input type='text' input='function(){}' placeholder='Enter todo...'/>
+<input type='text' placeholder='Enter todo...' value='...' input='function(){/*...*/}' />
 ```
 
-It's so familiar, and what I want is allow ljs creating custom component in the same way.
+It's so familiar, and what I want is allow ljs creating a component in the same way.
+With ljs, the syntax to create a component is:
+```
+l( tagName, attributeObject, eventObject, childrenComponentArray );
+```
 
-To make it clear, I split this DOM tree into 3 part: 
-- The 1st one is a todo-input component which allow user enter todo and add value to todo collections. It's form element with 2 childs.
-- The 2nd one is a todo-list component which display all todos.
-- The 3rd one is a todo component. This component will wrap todo-input and todo-list component to make todo app.
+For example, it's ljs syntax to create a component like a input HTMLElement above:
+```
+l('input', { type: 'text', placeholder: 'Enter todo...', value: '...' }, { input: function(){ /*...*/ } })) // no children
+```
+
+But using a default HTML component doesn't make it cooooool, so we continue with custom component.
+
+Custom component is not only simple as a single HTMLElement with custom tag name, ... but also complex as a HTMLElement tree.
+
+You will see what is a custom component in example below. But to make thing easy, let me introduce a syntax to register new custom component.
+
+    ```
+    // using l.register function to register new component
+    // this function have 2 parameters:
+    // - 1st parameter is component name: it can be simple string like 'z', 'y',.. or fully qualified namespace like so 'ljs.default.upload-component'
+    // - 2nd parameter is component contructor function which define a method named 'template' to return a component tree.
+
+    l.register( tagName, componentConstructor )
+    ```
+
+To make it clear, I split HTMLElement tree in above code into 3 parts: 
+- The first one is a todo-input component which allow user enter todo and add value to todo collections.
+- The second one is a todo-list component which display all todos.
+- The third one is a todo component. This component will wrap todo-input and todo-list component to make todo app.
 
 So with new structure, we have:
 - todo-input component:
-    - in code:
+    1. ljs code:
         ```
-        l.register('todo-form', function(){
-            this.template = function(a /*attrs*/, e /*events*/) {    
-                var todoInput = l('input', { type:'input', value: a.todo }, e.onInput && { input: e.onInput })
-                var addButton = l('button', null, e.onAdd && { click: e.onAdd }, l('', { text:'Add todo' }))
-                var todoForm = l('form', null, null, [todoInput, addButton]);
-                return todoForm;
+        // define todo-form component
+        // This component have one attribute is todo which is a value of todo
+        // and two events which use to alert current todo value changed and tod add a new todo to todo list.
+        // l('', { text:'Add todo' } in example below stand for text node
+
+        l.register('todo-form', function() {
+            this.template = function(a /*attrs*/, e /*events*/) {
+                return l('form', null, null, [
+                    l('input', { type:'input', value: a.todo }, e.onInput != null ? { input: e.onInput }: null),
+                    l('button', null, e.onAdd != null ? { click: e.onAdd } : null, l('', { text:'Add todo' }))                    
+                ]);
             }
         });
 
+        // using
+        l('todo-form', { todo: 'do sth' }, { onInput: function(e) { /*... */ }, onAdd: function(e) { /*...*/ } });
         ```
-    - generated html:
+    2. Generated html:
         ```
         <todo-form>
             <form>
                 <input 
                     type='text' 
-                    input='events.onInput' 
-                    value='attrs.todo' 
+                    input='function(){ /*... */}' 
+                    value='do sth' 
                     placeholder='Enter todo...'/>
-                <button click='events.onAdd'>Add todo</button>
+                <button click='function(){ /*...*/ }'>Add todo</button>
             </form>
-        </todo-form>    
+        </todo-form>
         ```
-    This component have one attribute is todo which is a value of todo, and two events which use to alert todo change and add todo to todo list.
 
-- todo-list:
-    - in code:
+- todo-item-list:
+    1. ljs code:
         ```
-        l.register('todo-item', function(){
-            this.template = function(a,e) {
-                var todoContent = l('', { text: a.todo });
-                var deleteButton = l('button', {}, { click: e.onDeleteTodo }, l('', { text: 'X' }));
-                var todoItem = l('li', {}, {}, [todoContent, deleteButton]);
-                return todoItem;
+        // define todo-item component
+        l.register('todo-item', function() {
+            this.template = function(a, e) {
+                return l('li', null, null, [
+                    l('', { text: a.todo }), 
+                    l('button', null, { click: e.onDeleteTodo }, l('', { text: 'X' }))
+                ]);
             }
         });
 
+        // define todo-item-list component which use todo-item inside it
         l.register('todo-item-list', function(){
-            this.template = function(a,e) {
-                var todoItems = [];
-                for(var i=0; i<a.todos.length; ++i) {
-                    var todoItem = l(  'todo-item', 
-                                        { todo: a.todos[i] }, 
-                                        { onDeleteTodo: function(){ a.todos.splice(i, 1); this.f5(); } })
-                    todoItems.push(todoItem);
-                }
-                return l('ul', {}, {}, todoItems);
+            this.template = function(a, e) {
+                return l('ul', null, null, a.todos.map(function(item, index) {
+                    return l('todo-item', { todo: item }, { onDeleteTodo: function(){ /*...*/ } })
+                }));
             }
         });
+
+        // using
+        l('todo-item-list', { todos:[ "Router", "Ajax" ]} )
         ```
-    generated html:
+
+    2. Generated html:
         ```
         <todo-item-list>
             <ul>
-                <todo-item><li> attr.todos[i] <button click='events.onDelete(i)'>X</button> </li></todo-item>                
-                ...
+                <todo-item><li> Router <button click='function(){ /*...*/ }'>X</button> </li></todo-item>
+                <todo-item><li> Ajax <button click='function(){ /*...*/ }'>X</button> </li></todo-item>
             </ul>
         </todo-item-list>
-        ```
-    This component have one custom attribute is todos and one custom event is onDelete.
+        ```    
 
-Then I can re-use these in todo component like so:
-- in code:
+After create todo-form and todo-item-list components, I can re-use these components to make a todo component like so:
+1. ljs code:
     ```
     l.register('todo', function(){
         this.template = function(a, e) {
-            var m = this;
-            var todoForm = l('todo-form', { todo: a.todo }, { onInput: function(e) { /*... */ }, onAdd: function(e) { /*...*/ } });
-            var todoItemList = l('todo-item-list', { todos: a.todos });
-            return l('div', {}, {}, [todoForm, todoItemList]);
+            return l('div', null, null, [
+                l('todo-form', { todo: a.todo }, { onInput: function(e) { /*... */ }, onAdd: function(e) { /*...*/ } }), 
+                l('todo-item-list', { todos: a.todos })
+            ]);
         }
     });
 
-    window.onload = function(){
-        var todo = l('todo', { todo: '', todos: [ 'Route', 'Ajax' ]} )
-        l.attach(document.getElementById('app'), todo);
-    }
-    ```
-    This todo component define 2 custom attribute is todo and todos. 3 events is onInput, onAdd and onDelete has been defined in component itself.
+    // using
+    var todo = l('todo', { todo: '1st todo', todos: [ 'Route', 'Ajax' ]} )
+    ```    
 
-What I need to do to using it is define it as a simple element like div, span in HTML document,...
-    ```
-    <todo 
-        todo='' 
-        todos='["Route", "Ajax"]'>
-    </todo>
-    ```
-Generated html:
+2. Generated html:
     ```
     <todo>
-        <div id='todo'>
+        <div>
             <todo-form>
                 <form>
                     <input 
                         type='text' 
                         input='function(){...}' 
-                        value='' />
+                        value='1st todo' />
                     <button click='function(){...}'>Add todo</button>
                 </form>
             </todo-form>
@@ -196,37 +213,59 @@ Generated html:
     </todo>
     ```
 
+Cooooool, huh. But how ljs make a component tree become actual DOM tree?
 
+As an example above, todo component is a combination of todo-input and todo-item-list component (which also a complex component too). So we cannot treat this component as a single HTMLElement.
 
-This syntax is so easy to learn if one already have knownledge about html.
+In other words, if we don't do anything with this component, the HTMLElement tree like above example will not be created, what we got is a single node `<todo>`. It's not what we want.
 
-But what is the difference between component and HTMLElement?
+So what we need to do is loop through this component and all its childrens component. In case we meet any children is custom component, we will translate it to a component tree using defined 'template' method.
 
-HTMLElmenet is a simple tag like a div, a span, an img, an a tag, a ul, a li,.. and these HTMLElement can be mounted to the DOM directly.
+For example:
+If ljs see the `<todo>` node, it'll translate it to 
+```
+<todo>
+    <todo-form></todo-form>
+    <todo-item-list></todo-item-list>
+</todo>
+```
+then it continue translate `<todo-form>` node into:
+```
+<todo-form>
+    <input/>
+    <button></button>
+</todo-form>
+```
+etc, ...
 
-But custom component can't because in ljs, it just vanilla js object.
-
-Another reason is custom component is not a simple HTMLElement. It look like a complex HTMLElement tree. For example, todo component above is created by the combination of a todo-input and todo-list element (which also a complex element too).
-
-So how can we display this component into DOM tree? We need to translate our custom component to a HTMLElement tree then mount it to the real DOM.
+The result of this process is a HTMLElement tree (of course we still have component node) and this tree can be attached to the live DOM.
 
 #### ljs update DOM mecharnism
-What I want to do is each time component data change, this component will automatically update the related DOM itself.
-But generate native HTMLElement tree directly from a component, then detect the changes in this tree will spent a ton of work because a native HTMLElement define a lot of property, method, etc... Comparing the change in this tree is impossible.
 
-So to make it possible to detect the changes of component, I create a lightweight Virtual DOM tree. Each node of this tree is only vanilla js object with few properties. It's make more easier and effeciently to detect what has been changed.
+Each time something change in component, ljs will generate another HTMLElement tree (new tree) by translating custom component.
+To update new changes, ljs compare the old and new HTMLElement tree, apply this changes to the DOM.
 
-After detect the changes from virtual DOM, we need to patch the diffs into the real DOM. To make it's fast, the virtual DOM created will link to the DOM directly. So each time virtual DOM change, we can find the affected DOM easily without traversal entire DOM tree.
+Translate custom component to HTMLElement tree is very easy to do.
 
+But its downside is it make impossible to detect new changes between old and new HTMLElement tree because HTMLElement contain a lot of properties, prototype layer,...
 
-#### Conclude
-What you will do is define a custom component with custom attribute and events, define the way this component will be translate into VDOM tree.
+Finding a differences between 2 HTMLElement tree is impossible or at least, decrease perfomance significantly.
 
-When you using this component, ljs will translate this component to virtual DOM tree. After that, ljs will translate this virtual DOM tree to HTMLElement tree and attach it into the live DOM.
+To make it possible, ljs doesn't translate custom component to HTMLElement tree. Actually, it's only generate custom component to an object tree called virtual DOM tree. Each node of this tree is an object which hold a pieces of data (attribute, event, childs) to mimic a real HTMLElement in DOM tree.
+
+Comparing between 2 lightweight trees is easier and faster.
+
+After detect the changes between 2 virtual DOM trees, ljs will patch the diffs into the real DOM.
+
+And we have another problem. Travel entire the DOM tree to detect what DOM node will be affected by current changes is a nightmare. This action will slow-down the performance of entire application significantly.
+
+To solve this problem, each virtual DOM object will have a property to link to the real DOM node directly.
+Each time virtual DOM change, we can find and update the affected DOM easily without traversal entire DOM tree.
+
 
 ### What vdom is 
 
-VDOM is a name of ljs virtual DOM. Virtual DOM is a lightweight object of DOM. Its important concept of so much libs, frameworks. Its make these framework detect the changes easier, faster, effeciently,...
+VDOM is a name of ljs virtual DOM. Virtual DOM is a lightweight object of DOM. It's an important concept of so much libs, frameworks. Its make these framework detect the changes easier, faster, effeciently,...
 
 VDOM contain small piece of data which help ljs decide what need to do with the DOM.
 
@@ -252,7 +291,9 @@ Component is a very simple object which contain a piece of data and also have re
 
 Component members:
 
-1. data - (object): is an object contain data of current component (also known as props and states in another framework). Component will use this data to render VDOM from its defined template.
+1. attrs - (object): is an object contain data of current component (also known as props and states in another framework). Component will use this data to render VDOM from its defined template.
+
+2. events - (object): is an object which contain custom event of current component.
 
 2. VDOM - (VDOM): a reference to its VDOM.
  
@@ -260,7 +301,7 @@ Component members:
 
    To understand what is the difference between main VDOM and temp VDOM, we need to understand what is the difference between visible DOM and hidden DOM.
  
- Visiable DOM: is a DOM object which has been attached to document object. Every change in this DOM will change browser content.
+ Visible DOM: is a DOM object which has been attached to document object. Every change in this DOM will change browser content.
 
  Hidden DOM: is a DOM which has been created by javacript and not attached to document object yet. So changing this DOM is not affect to browser content.
 
@@ -270,41 +311,25 @@ Component members:
 
 3. redraw() - (void): is a method which we will use to tell component: "Hey, it's a time to update DOM".
 
-4. template(data) - (VDOM): this method define the html structure of component via ljs.
+4. template(data) - (Component): this method define the html structure of component.
 
 ### Using l
-1. Create template
-   
- Template is a VDOM tree. There are 2 ways to create VDOM tree using l function.
-  * l(tag, attributes, events, childs): this function will return raw VDOM object without component.
-    - tag: is a valid string html tag ('a', 'div', 'span', ...)
-    - attributes: is an object which define attributes of html element by its attributes ( { class: 'navbar', id: 'nav', type: 'input', placeholder: 'hello ljs' })
+1. Create component
+  * l(tag, attributes, events, childs): this function will return component object.
+    - tag: is a valid string html tag ('a', 'div', 'span', ... or custom tag which has been registered).
+    - attributes: is an object which define custom attributes of component.
+    - events: is an object which define custom events of component.
+    - childs: is an array of component objects.
 
-    - events: is an object which define events for html element by its attributes (click, input, change...)
-
-    - child: is an array which contain primitive value or VDOM tree, objects ( ['Log in', 'Log out', 5, l(...)]).
-
- * l(customTag, data): this function will return VDOM object with component linked by 'component' property.
-    - customTag: is a string which define tag you registered with l. Note that:
-    
-        * customTag is not in html tag (a, div, etc).
-        
-        * customTag should be use as a namespace to reduce name conflict. (com.abc.menubar, com.netfluux.navbar, ...)
-    - data: is an object which contain everything your custom component need to render template.
-
-2. Register custom component
-
- Default, 'l' only contain html VDOM. To resgister custom component, we should use register method of 'l' object.
+2. Register component
  * l.register(customTag, componentConstructor): this function will add componentConstructor to component storage of l. After register, component can be create by l(…).component.
-    - customTag: is a unique string to help l detect your custom component. 
-    - componentConstructor: is a constructor function which contain 'template' method return VDOM object.
+    - customTag: is a unique string to help l detect your custom component.
+    - componentConstructor: is a constructor function which contain 'template' method.
 
 3. Attach component to the DOM
  * l.attach(host, component): this function will attach component to the DOM to make it visible in browser.
     - host: is a DOM object which will contain component after attach completed.
-    - component: is a component object created by l().component
-
-
+    - component: is a component object created by l(...)
 
 ----
 ## TODO
