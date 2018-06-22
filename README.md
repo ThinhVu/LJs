@@ -84,51 +84,119 @@ To make it clear, I split this DOM tree into 3 part:
 
 So with new structure, we have:
 - todo-input component:
-    ```
-    <todo-input>
-        <form>
-            <input 
-                type='text' 
-                input='events.onInput' 
-                value='attrs.todo' 
-                placeholder='Enter todo...'/>
-            <button click='events.onAdd'>Add todo</button>
-        </form>
-    </todo-input>    
-    ```
+    - in code:
+        ```
+        l.register('todo-form', function(){
+            this.template = function(a /*attrs*/, e /*events*/) {    
+                var todoInput = l('input', { type:'input', value: a.todo }, e.onInput && { input: e.onInput })
+                var addButton = l('button', null, e.onAdd && { click: e.onAdd }, l('', { text:'Add todo' }))
+                var todoForm = l('form', null, null, [todoInput, addButton]);
+                return todoForm;
+            }
+        });
+
+        ```
+    - generated html:
+        ```
+        <todo-form>
+            <form>
+                <input 
+                    type='text' 
+                    input='events.onInput' 
+                    value='attrs.todo' 
+                    placeholder='Enter todo...'/>
+                <button click='events.onAdd'>Add todo</button>
+            </form>
+        </todo-form>    
+        ```
     This component have one attribute is todo which is a value of todo, and two events which use to alert todo change and add todo to todo list.
 
-- Todo list:
-    ```
-    <todo-list>
-        <ul>
-            <li> attr.todos[i] <button click='events.onDelete(i)'>X</button> </li>
-            <li> attr.todos[i] <button click='events.onDelete(i)'>X</button> </li>
-            ...
-        </ul>
-    </todo-list>
-    ```
+- todo-list:
+    - in code:
+        ```
+        l.register('todo-item', function(){
+            this.template = function(a,e) {
+                var todoContent = l('', { text: a.todo });
+                var deleteButton = l('button', {}, { click: e.onDeleteTodo }, l('', { text: 'X' }));
+                var todoItem = l('li', {}, {}, [todoContent, deleteButton]);
+                return todoItem;
+            }
+        });
+
+        l.register('todo-item-list', function(){
+            this.template = function(a,e) {
+                var todoItems = [];
+                for(var i=0; i<a.todos.length; ++i) {
+                    var todoItem = l(  'todo-item', 
+                                        { todo: a.todos[i] }, 
+                                        { onDeleteTodo: function(){ a.todos.splice(i, 1); this.f5(); } })
+                    todoItems.push(todoItem);
+                }
+                return l('ul', {}, {}, todoItems);
+            }
+        });
+        ```
+    generated html:
+        ```
+        <todo-item-list>
+            <ul>
+                <todo-item><li> attr.todos[i] <button click='events.onDelete(i)'>X</button> </li></todo-item>                
+                ...
+            </ul>
+        </todo-item-list>
+        ```
     This component have one custom attribute is todos and one custom event is onDelete.
 
 Then I can re-use these in todo component like so:
-```
-<todo>
-    <div id='todo'>
-        <todo-input todo='attrs.todo' onInput='function(){...}' onAdd='function(){...}'/>
-        <todo-list todos="attrs.todos" onDeleted='function(){...}'/>
-    </div>
-</todo>
-```
-This todo component define 2 custom attribute is todo and todos. 3 events is onInput, onAdd and onDelete has been defined in component itself.
+- in code:
+    ```
+    l.register('todo', function(){
+        this.template = function(a, e) {
+            var m = this;
+            var todoForm = l('todo-form', { todo: a.todo }, { onInput: function(e) { /*... */ }, onAdd: function(e) { /*...*/ } });
+            var todoItemList = l('todo-item-list', { todos: a.todos });
+            return l('div', {}, {}, [todoForm, todoItemList]);
+        }
+    });
 
-And to using 'todo' element, what I need to do is just put a 
-```
-<todo 
-    todo='...' 
-    todos='["Route", "Ajax"]'>
-</todo>
-```
-as a simple element like div, span in HTML document,...
+    window.onload = function(){
+        var todo = l('todo', { todo: '', todos: [ 'Route', 'Ajax' ]} )
+        l.attach(document.getElementById('app'), todo);
+    }
+    ```
+    This todo component define 2 custom attribute is todo and todos. 3 events is onInput, onAdd and onDelete has been defined in component itself.
+
+What I need to do to using it is define it as a simple element like div, span in HTML document,...
+    ```
+    <todo 
+        todo='' 
+        todos='["Route", "Ajax"]'>
+    </todo>
+    ```
+Generated html:
+    ```
+    <todo>
+        <div id='todo'>
+            <todo-form>
+                <form>
+                    <input 
+                        type='text' 
+                        input='function(){...}' 
+                        value='' />
+                    <button click='function(){...}'>Add todo</button>
+                </form>
+            </todo-form>
+            <todo-item-list>
+                <ul>
+                    <todo-item><li> Route <button click='function(){...}'>X</button> </li></todo-item>
+                    <todo-item><li> Ajax <button click='function(){...}'>X</button> </li></todo-item>
+                </ul>
+            </todo-item-list>
+        </div>
+    </todo>
+    ```
+
+
 
 This syntax is so easy to learn if one already have knownledge about html.
 
