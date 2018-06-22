@@ -53,7 +53,7 @@ To fully understand what ljs is, we need to know:
 #### ljs component structure
 The first thing to know in ljs is component structure.
 To explain the concept of ljs component structure in a simple way. I have a HTMLElement tree like so:
-`
+```
 <div id='todo'>
     <form>
         <input type='text' input='function(){}' placeholder='Enter todo...'/>
@@ -65,13 +65,15 @@ To explain the concept of ljs component structure in a simple way. I have a HTML
         ...
     </ul>
 </div>
-`
+```
 
 In this tree, we can see these is a lot of native HTMLElements like div, form, input, button, ul, li.
 Native HTMLElement have a lot of things inside it, but what we only need to care about is only tag, attributes and events (like above example).
 
 Everytime create a HTMLElement, we need to provide a tag name, a custom attributes and events. Like so:
-`<input type='text' input='function(){}' placeholder='Enter todo...'/>`
+```
+<input type='text' input='function(){}' placeholder='Enter todo...'/>
+```
 
 It's so familiar, and what I want is allow ljs creating custom component in the same way.
 
@@ -82,7 +84,7 @@ To make it clear, I split this DOM tree into 3 part:
 
 So with new structure, we have:
 - todo-input component:
-    `
+    ```
     <todo-input>
         <form>
             <input 
@@ -93,11 +95,11 @@ So with new structure, we have:
             <button click='events.onAdd'>Add todo</button>
         </form>
     </todo-input>    
-    `
+    ```
     This component have one attribute is todo which is a value of todo, and two events which use to alert todo change and add todo to todo list.
 
 - Todo list:
-    `
+    ```
     <todo-list>
         <ul>
             <li> attr.todos[i] <button click='events.onDelete(i)'>X</button> </li>
@@ -105,27 +107,27 @@ So with new structure, we have:
             ...
         </ul>
     </todo-list>
-    `
+    ```
     This component have one custom attribute is todos and one custom event is onDelete.
 
 Then I can re-use these in todo component like so:
-`
+```
 <todo>
     <div id='todo'>
         <todo-input todo='attrs.todo' onInput='function(){...}' onAdd='function(){...}'/>
         <todo-list todos="attrs.todos" onDeleted='function(){...}'/>
     </div>
 </todo>
-`
+```
 This todo component define 2 custom attribute is todo and todos. 3 events is onInput, onAdd and onDelete has been defined in component itself.
 
 And to using 'todo' element, what I need to do is just put a 
-`
+```
 <todo 
     todo='...' 
     todos='["Route", "Ajax"]'>
 </todo>
-`
+```
 as a simple element like div, span in HTML document,...
 
 This syntax is so easy to learn if one already have knownledge about html.
