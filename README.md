@@ -65,7 +65,7 @@ To explain the concept of ljs component in a simple way, I create a HTMLElement 
 ```
 
 In this tree, we can see these is a lot of native HTMLElements like div, form, input, button, ul, li.
-Native HTMLElement have a lot of things inside it, but what we only need to care about is only tag, attributes and events (like above example).
+Native HTMLElement have a lot of things inside it, but things we only care about are tag, attributes and events (like above example).
 
 To create a HTMLElement, we need to provide a tag name, a custom attributes and events like so:
 ```
@@ -88,28 +88,26 @@ But using a default HTML component doesn't make it cooooool, so we continue with
 Custom component is not only simple as a single HTMLElement with custom tag name, ... but also complex as a HTMLElement tree.
 
 You will see what is a custom component in example below. But to make thing easy, let me introduce a syntax to register new custom component.
-
-    ```
+    
     // using l.register function to register new component
     // this function have 2 parameters:
     // - 1st parameter is component name: it can be simple string like 'z', 'y',.. or fully qualified namespace like so 'ljs.default.upload-component'
     // - 2nd parameter is component contructor function which define a method named 'template' to return a component tree.
 
     l.register( tagName, componentConstructor )
-    ```
 
 To make it clear, I split HTMLElement tree in above code into 3 parts: 
-- The first one is a todo-input component which allow user enter todo and add value to todo collections.
-- The second one is a todo-list component which display all todos.
-- The third one is a todo component. This component will wrap todo-input and todo-list component to make todo app.
+- The first one is a todo-form component which allow user enter todo and add value to todo collections.
+- The second one is a todo-item-list component which display all todos.
+- The third one is a todo component. This component will wrap todo-form and todo-item-list components to make todo app.
 
 So with new structure, we have:
-- todo-input component:
+- todo-form component:
     1. ljs code:
         ```
         // define todo-form component
-        // This component have one attribute is todo which is a value of todo
-        // and two events which use to alert current todo value changed and tod add a new todo to todo list.
+        // This component have one attribute is 'todo' which is a value of todo
+        // and two events, 'onInput' used to alert current todo value changed and 'onAdd' used to add a new todo to todo list.
         // l('', { text:'Add todo' } in example below stand for text node
 
         l.register('todo-form', function() {
