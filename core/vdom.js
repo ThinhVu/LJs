@@ -46,54 +46,68 @@ var _uniqueChildKey = function (objs /*object[]*/) {
  * @param {VDOM[]} childs 
  */
 function VDOM(tag, attrs, events, childs) {
-    var m = this, _DOM = undefined;
-    m.tag = tag || ''; // tag or text node
-    if (attrs != undefined) m.attrs = attrs;
-    if (events != undefined) m.events = events;
-    if (childs != undefined) m.childs = childs;
+    var m = this;
+    var _DOM = undefined; /*HTMLElement*/
+    m.tag = tag || ''; /*tag or text node*/
 
-    m.__defineSetter__('DOM', function (dom) {
+    // adding attrs, events, childs
+    if (attrs != undefined) m.attrs = attrs;
+    if (events != undefined) {
+        m.events = {};
+        // TODO: Resolve binding problem
+        for (e in events) {
+            if (events[e] != undefined)
+                m.events[e] = events[e];
+        }
+    }
+    if (childs != undefined) {
+        m.childs = [].concat.apply([], [childs]);
+    }
+
+    // DOM getter, setter
+    m.__defineSetter__('DOM', function (dom/*HTMLElement */) {
         _DOM = dom;
-        _DOM.VDOM = this;
+        _DOM.VDOM = m;
     });
     m.__defineGetter__('DOM', function () {
         if (_DOM == undefined) {
-            if (this.tag === '') {
-                // text VDOM
-                _DOM = document.createTextNode(this.attrs.text);
+            if (m.tag === '') {
+                // text vdom
+                _DOM = document.createTextNode(m.attrs.text);
             }
             else {
                 // tag vdom
-                _DOM = document.createElement(this.tag || '');
-                for (var a in this.attrs) _setAttr(_DOM, a, this.attrs[a]);
-                for (var e in this.events) _DOM.addEventListener(e, this.events[e].bind(this.Lode));
-                for (var c in this.childs) _DOM.appendChild(this.childs[c].DOM);
+                _DOM = document.createElement(m.tag);
+                for (var a in m.attrs) _setAttr(_DOM, a, m.attrs[a]);
+                for (var e in m.events) _DOM.addEventListener(e, m.events[e].bind(m)); // binding problem??
+                for (var c in m.childs) _DOM.appendChild(m.childs[c].DOM);
             }
-            _DOM.VDOM = this;
+            _DOM.VDOM = m;
         }
         return _DOM;
     })
 
-    //
+    // update VDOM tree
     m.update = function (nxt) {
         if (m.tag == '' && nxt.tag == '') { // text node
             m.DOM.data = nxt.DOM.data;
         }
         else if (m.tag != nxt.tag) { // if not
-            // 1st assumption: If tag different => f5 entire tree.            
+            // 1st assumption: If tag different => f5 entire tree.
             // Almost, if not all case it doesn't matter detach old node or attach new node first.  
             var nxtSbl = m.DOM.nextSibling || undefined;
-
+    
             m.parent.DOM.removeChild(m.DOM);
             m.parent.DOM.insertBefore(nxt.DOM, nxtSbl);
             
             m.tag = nxt.tag;
             m.attrs = nxt.attrs;
-            m.events = nxt.events; // TODO: events should bind to context of Lode
+            m.events = nxt.events; // TODO: events should bind to context of 
             m.childs = nxt.childs;
             m.DOM = nxt.DOM;
         }
         else {
+            // attribute diffing
             var adif = _diff(m.attrs, nxt.attrs);
             for (var a in adif) {
                 switch (adif[a]) {
@@ -114,7 +128,7 @@ function VDOM(tag, attrs, events, childs) {
                     case Changes.Create:
                     case Changes.Update:
                         m.DOM.removeEventListener(p, m.events[p]);
-                        m.events[p] = nxt.events[p].bind(m.Lode);
+                        m.events[p] = nxt.events[p]; /*binding problem*/
                         m.DOM.addEventListener(p, m.events[p]);
                         break;
                     case Changes.Delete:
@@ -123,17 +137,21 @@ function VDOM(tag, attrs, events, childs) {
                         break;
                 }
             }
-
-
-            var empty = [];
-            var nLen = (m.childs || empty).length;
-            var nxtLen = (nxt.childs || empty).length;
-
+    
+            var nLen = (m.childs || []).length;
+            var nxtLen = (nxt.childs || []).length;
+    
             // diffing by key if and only if:
             // - old DOM have at least one child with key attr
             // - no duplicate child key in both old and new dom
-            var keyed = nLen && m.childs[0].attrs && m.childs[0].attrs.hasOwnProperty('key') &&
-                _uniqueChildKey(m) && _isChildNoDuplicateKey(nxt);
+            var keyed = ( 
+                   nLen
+                && m.childs[0].attrs 
+                && m.childs[0].attrs.hasOwnProperty('key') 
+                && _uniqueChildKey(m) 
+                && _uniqueChildKey(nxt)
+            );
+
             if (keyed) {
                 var frag = document.createDocumentFragment();
                 frag.appendChild(m.DOM);
@@ -144,7 +162,7 @@ function VDOM(tag, attrs, events, childs) {
                 var newKeys = {};
                 for (var i in m.childs) { oldKeys[m.childs[i].attrs.key] = m.childs[i]; }
                 for (var i in nxt.childs) { newKeys[nxt.childs[i].attrs.key] = nxt.childs[i]; }
-
+    
                 // remove childs element which doesn't appear in new childs DOM
                 for (var i in oldKeys) {
                     if (!newKeys.hasOwnProperty(i)) {
@@ -152,7 +170,7 @@ function VDOM(tag, attrs, events, childs) {
                         m.childs.splice(m.childs.indexOf(oldKeys[i]), 1); // remove VDOM
                     }
                 }
-
+    
                 // update or add new
                 // loop through nxt.childs because we need ordered childs
                 // if we loop through newKeys, order will be changed depend on key name.
