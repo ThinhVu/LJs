@@ -6,12 +6,12 @@
  * @param {Lode[] || null} childs 
  */
 var l = function (tag, attrs, events, childs) {
-    var cpn = {};
-    // add methods: 'f5, template, ...
-    Lode.call(cpn, tag, attrs, events, childs);
-    // update specified template
-    _templates[tag].call(cpn);
-    return cpn;
+    var lodeInstance = {};
+    // invoke base constructor
+    Lode.call(lodeInstance, tag, attrs, events, childs);
+    // invoke specified constructor
+    _lodeCtors[tag].call(lodeInstance);
+    return lodeInstance;
 };
 
 /**
@@ -19,10 +19,11 @@ var l = function (tag, attrs, events, childs) {
  * @param {string} tag : Lode alias
  * @param {function} lodeCtor : function define a class of Lode.
  */
-l.register = function (tag, lodeCls) {
-    if (_templates.hasOwnProperty(tag))
+l.register = function (tag, lodeCtor) {
+    // define specified constructor
+    if (_lodeCtors.hasOwnProperty(tag))
         throw tag + ' existed. Cannot overwrite.';
-    _templates[tag] = lodeCls;
+    _lodeCtors[tag] = lodeCtor;
 }
 
 /**
@@ -31,7 +32,8 @@ l.register = function (tag, lodeCls) {
  * @param {*} vdom 
  */
 l.attach = function (dom, lode) {
-    lode.parent = { childs: [lode], VDOM: { DOM: dom, childs: [lode.VDOM] } };
+    var parentLode = { childs: [lode], VDOM: { DOM: dom, childs: [lode.VDOM] } };
+    lode.parent = parentLode;
     lode.VDOM.parent = lode.parent.VDOM;
     dom.appendChild(lode.VDOM.DOM);
 }

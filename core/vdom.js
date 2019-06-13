@@ -30,6 +30,7 @@ var _diff = function (now, nxt) {
 var _uniqueChildKey = function (objs /*object[]*/) {
     var ks = {};
     for (var i in objs) {
+        if (objs[i].attrs == undefined) return false; // no attr
         if (objs[i].attrs.key == undefined) return false; // no-key
         if (ks.hasOwnProperty(objs[i].attrs.key)) return false; // duplicate key
         ks[objs[i].attrs.key] = 0; // store key for next check
@@ -48,9 +49,17 @@ var _uniqueChildKey = function (objs /*object[]*/) {
 function VDOM(tag, attrs, events, childs) {
     var m = this, _DOM = undefined;
     m.tag = tag || ''; // tag or text node
-    if (attrs != undefined) m.attrs = attrs;
+    if (attrs != undefined) {
+        m.attrs = attrs;
+    }   
     if (events != undefined) m.events = events;
-    if (childs != undefined) m.childs = childs;
+    if (childs != undefined) {
+        m.childs = [];
+        for(var i in childs) {
+            childs[i].parent = m;
+            m.childs.push(childs[i]);
+        }
+    }
 
     m.__defineSetter__('DOM', function (dom) {
         _DOM = dom;
@@ -66,7 +75,7 @@ function VDOM(tag, attrs, events, childs) {
                 // tag vdom
                 _DOM = document.createElement(this.tag || '');
                 for (var a in this.attrs) _setAttr(_DOM, a, this.attrs[a]);
-                for (var e in this.events) _DOM.addEventListener(e, this.events[e].bind(this.Lode));
+                for (var e in this.events) _DOM.addEventListener(e, this.events[e]);
                 for (var c in this.childs) _DOM.appendChild(this.childs[c].DOM);
             }
             _DOM.VDOM = this;

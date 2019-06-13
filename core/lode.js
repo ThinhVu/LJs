@@ -19,7 +19,7 @@ function Lode(tag, attrs, events, childs) {
         if (m.childs[i] == null)
             m.childs.splice(i, 1);
         else
-            i++;             
+            i++;
     }
 
     var _VDOM = undefined;
@@ -63,7 +63,6 @@ function Lode(tag, attrs, events, childs) {
      * @returns {Lode} a Lode tree
      */
     m.template = function (attrs, events, childs) { throw "Not impl" };
-    m.__defineGetter__('ctx', function() { return this; });
     m.toVDOM = function() {
         var vdom;        
         if (_tags.includes(this.tag)) {
@@ -79,9 +78,10 @@ function Lode(tag, attrs, events, childs) {
                 nestedLodeTree.events,
                 nestedLodeTree.childs.map(function(lode){ return lode.toVDOM() }));
             
+            nestedLodeTree.VDOM = nestedVdomTree;
             // Lode VDOM
-            vdom = new VDOM(m.tag, null, null, [nestedVdomTree]);
-        }        
+            vdom = new VDOM(m.tag, m.attrs, m.events, [nestedVdomTree]);
+        }
         vdom.Lode = m;
         return vdom;
     }

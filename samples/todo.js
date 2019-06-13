@@ -10,22 +10,30 @@ l.register('todo-form', function(){
 l.register('todo-item', function(){
     this.template = function(a,e) {
         var todoContent = l('', { text: a.todo });
-        var deleteButton = l('button', {}, { click: e.onDeleteTodo }, l('', { text: 'X' }));
-        var todoItem = l('li', {}, {}, [todoContent, deleteButton]);
+        var deleteButton = l('button', null, { click: function(event){ 
+            e.onDeleteTodo(); 
+        } }, l('', { text: 'X' }));
+        var todoItem = l('li', { key: a.key }, null, [todoContent, deleteButton]);
         return todoItem;
     }
 });
 
 l.register('todo-item-list', function(){
     this.template = function(a,e) {
+        var m = this;
         var todoItems = [];
         for(var i=0; i<a.todos.length; ++i) {
             var todoItem = l(  'todo-item', 
-                                { todo: a.todos[i] }, 
-                                { onDeleteTodo: function(){ a.todos.splice(i, 1); this.f5(); } })
+                                { todo: a.todos[i], key: i }, 
+                                { onDeleteTodo: (function(index){ 
+                                    return function(){ 
+                                        e.onDeleteTodo(index);
+                                    } 
+                                })(i) }
+                            )
             todoItems.push(todoItem);
         }
-        return l('ul', {}, {}, todoItems);
+        return l('ul', null, null, todoItems);
     }
 });
 
@@ -33,18 +41,25 @@ l.register('todo', function(){
     this.template = function(a, e) {
         var m = this;
         var todoForm = l('todo-form', { todo: a.todo }, { 
-            onInput: function(e) { 
-                a.todo = e.target.value;
-                m.ctx.f5();
+            onInput: function(event) { 
+                event.preventDefault();
+                a.todo = event.target.value;
+                m.f5();
             },
-            onAdd: function(e) {
+            onAdd: function(event) {
+                event.preventDefault();
                 a.todos.push(a.todo);
                 a.todo = '';
-                m.ctx.f5();
+                m.f5();
             }
         });
-        var todoItemList = l('todo-item-list', { todos: a.todos });
-        return l('div', {}, {}, [todoForm, todoItemList]);
+        var todoItemList = l('todo-item-list', { todos: a.todos }, {
+            onDeleteTodo: function(i) {
+                a.todos.splice(i, 1);
+                m.f5();
+            }
+        });
+        return l('div', null, null, [todoForm, todoItemList]);
     }
 })
 
