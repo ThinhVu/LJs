@@ -39,31 +39,41 @@ l.register('todo-item-list', function(){
 
 l.register('todo', function(){
     this.template = function(a, e) {
-        var m = this;
         var todoForm = l('todo-form', { todo: a.todo }, { 
-            onInput: function(event) { 
-                event.preventDefault();
-                a.todo = event.target.value;
-                m.f5();
-            },
-            onAdd: function(event) {
-                event.preventDefault();
-                a.todos.push(a.todo);
-                a.todo = '';
-                m.f5();
-            }
+            onInput: e.onInput,
+            onAdd: e.onAdd
         });
-        var todoItemList = l('todo-item-list', { todos: a.todos }, {
-            onDeleteTodo: function(i) {
-                a.todos.splice(i, 1);
-                m.f5();
-            }
-        });
+        var todoItemList = l('todo-item-list', { todos: a.todos }, { onDeleteTodo: e.onDeleteTodo });
         return l('div', null, null, [todoForm, todoItemList]);
     }
 })
 
 window.onload = function(){
-    var todo = l('todo', { todo: 'Hello there', todos: [ 'Route', 'Ajax', 'Sample app' ]} )
-    l.attach(document.getElementById('app'), todo);
+    var todoComponent;
+
+    var todoData = { 
+        todo: 'Hello there', 
+        todos: [ 'Route', 'Ajax', 'Sample app' ]
+    };
+
+    var todoEvents = {
+        onInput: function(event) { 
+            event.preventDefault();
+            todoData.todo = event.target.value;
+            todoComponent.f5();
+        },
+        onAdd: function(event) {
+            event.preventDefault();
+            todoData.todos.push(todoData.todo);
+            todoData.todo = '';
+            todoComponent.f5();
+        },
+        onDeleteTodo: function(i) {
+            todoData.todos.splice(i, 1);
+            todoComponent.f5();
+        }
+    };
+    
+    todoComponent = l('todo', todoData, todoEvents);
+    l.attach(document.getElementById('app'), todoComponent);
 }

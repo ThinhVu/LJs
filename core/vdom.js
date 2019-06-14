@@ -170,76 +170,26 @@ function VDOM(tag, attrs, events, childs) {
             var nLen = (m.childs || empty).length;
             var nxtLen = (nxt.childs || empty).length;
 
-            // diffing by key if and only if:
-            // - old DOM have at least one child with key attr
-            // - no duplicate child key in both old and new dom
-            var keyed = nLen && m.childs[0].attrs && m.childs[0].attrs.hasOwnProperty('key') &&
-                _uniqueChildKey(m.childs) && _uniqueChildKey(childs);
-            if (keyed) {
-                console.log('creating flagment');
-                var frag = document.createDocumentFragment();
-                frag.appendChild(m.DOM);
-                // 2nd assumption: keyed children node diffing.
-                // old_childs = [ {key:1, VDOM:..}, {key: 2, VDOM:..} ]
-                // new_childs = [ {key:3, VDOM:..}, {key: 1, VDOM:..}, {key:2, DOM:html}]
-                var oldKeys = {}; // { 1: VDOM, 2: VDOM, 3: VDOM}
-                var newKeys = {};
-                for (var i in m.childs) { oldKeys[m.childs[i].attrs.key] = m.childs[i]; }
-                for (var i in nxt.childs) { newKeys[nxt.childs[i].attrs.key] = nxt.childs[i]; }
-
-                // remove childs element which doesn't appear in new childs DOM
-                for (var i in oldKeys) {
-                    if (!newKeys.hasOwnProperty(i)) {
-                        m.DOM.removeChild(oldKeys[i].DOM); // remove DOM
-                        m.childs.splice(m.childs.indexOf(oldKeys[i]), 1); // remove VDOM
-                    }
+            if (nLen > nxtLen) {
+                var i = nLen - 1;
+                do {
+                    m.DOM.removeChild(m.childs[i].DOM);
+                    m.childs.splice(i, 1);
+                    i--;
                 }
-
-                // update or add new
-                // loop through nxt.childs because we need ordered childs
-                // if we loop through newKeys, order will be changed depend on key name.
-                for (var i in nxt.childs) {
-                    var key = nxt.childs[i].attrs.key;
-                    if (oldKeys.hasOwnProperty(key)) {
-                        oldKeys[key].update(newKeys[key]);
-                    }
-                    else {
-                        // add new
-                        if (i == 0) { // insert at 1st position
-                            m.DOM.insertBefore(newKeys[key].DOM, m.childs[0].DOM);
-                        } else {
-                            // insert at the middle or the last
-                            m.DOM.insertBefore(newKeys[key].DOM, m.childs[i - 1].DOM.nextSibling);
-                        }
-                        m.childs.splice(i, 0, newKeys[key]);
-                    }
-                }
-                // attach
-                m.parent.DOM.appendChild(frag);
+                while (i > nxtLen)
             }
-            else {
-                // naively implement
-                if (nLen > nxtLen) {
-                    var i = nLen - 1;
-                    do {
-                        m.DOM.removeChild(m.childs[i].DOM);
-                        m.childs.splice(i, 1);
-                        i--;
-                    }
-                    while (i > nxtLen)
+            else if (nLen < nxtLen) {
+                // add
+                for (var i = nLen; i < nxtLen; ++i) {
+                    m.DOM.appendChild(nxt.childs[i].DOM);
+                    m.childs.push(nxt.childs[i]);
                 }
-                else if (nLen < nxtLen) {
-                    // add
-                    for (var i = nLen; i < nxtLen; ++i) {
-                        m.DOM.appendChild(nxt.childs[i].DOM);
-                        m.childs.push(nxt.childs[i]);
-                    }
-                }
-                // update
-                var min = nLen < nxtLen ? nLen : nxtLen;
-                for (var i = 0; i < min; ++i) {
-                    m.childs[i].update(nxt.childs[i]);
-                }
+            }
+            // update
+            var min = nLen < nxtLen ? nLen : nxtLen;
+            for (var i = 0; i < min; ++i) {
+                m.childs[i].update(nxt.childs[i]);
             }
         }
     }
