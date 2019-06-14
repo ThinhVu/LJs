@@ -1,11 +1,36 @@
-var _attrs = { 'value': 'value' };
-var _setAttr = function (dom, name, val) {
-    if (_attrs.hasOwnProperty(name))
-        dom[_attrs[name]] = val;
-    else
-        dom.setAttribute(name, val);
+var _isCustomElement = function(dom) {
+    return _tags.indexOf(dom.tagName.toLowerCase()) < 0;
 }
 
+// add/remove attribute
+var _assignRequiredAttrs = [ 'value' ];
+var _setAttr = function (dom, name, attr) {
+    // skip adding attribute for component element
+    if (_isCustomElement(dom))
+        return;
+    // check if directly assign is the only way to change the dom attribute
+    if (_assignRequiredAttrs.indexOf(name) >= 0) {
+        dom[name] = attr;
+    }
+    else { // otherwise using setAttribute
+        dom.setAttribute(name, attr);
+    }
+}
+var _removeAttr = function(dom, name) {
+    dom.removeAttribute(name);
+}
+
+// event add/remove
+var _addEvent = function(dom, name, ev) {
+    if (_isCustomElement(dom)) 
+        return;
+    dom.addEventListener(name, ev);
+}
+var _removeEvent = function(dom, name, ev) {
+    dom.removeEventListener(name, ev);
+}
+
+// diffing
 var Changes = { None: 0, Create: 1, Update: 2, Delete: 3 };
 var _diff = function (now, nxt) {
     var ps = {};
@@ -52,7 +77,9 @@ function VDOM(tag, attrs, events, childs) {
     if (attrs != undefined) {
         m.attrs = attrs;
     }   
-    if (events != undefined) m.events = events;
+    if (events != undefined) {
+        m.events = events;
+    }
     if (childs != undefined) {
         m.childs = [];
         for(var i in childs) {
@@ -73,20 +100,26 @@ function VDOM(tag, attrs, events, childs) {
             }
             else {
                 // tag vdom
-                _DOM = document.createElement(this.tag || '');
-                for (var a in this.attrs) _setAttr(_DOM, a, this.attrs[a]);
-                for (var e in this.events) _DOM.addEventListener(e, this.events[e]);
+                _DOM = document.createElement(this.tag);
+                // only add the attributes & events for native dom element
+                // otherwise, skip
+                if (_tags.indexOf(tag) > 0) {
+                    for (var a in this.attrs) _setAttr(_DOM, a, this.attrs[a]);
+                    for (var e in this.events) _addEvent(_DOM, e, this.events[e]);
+                }
                 for (var c in this.childs) _DOM.appendChild(this.childs[c].DOM);
             }
             _DOM.VDOM = this;
         }
         return _DOM;
-    })
+    });
 
     //
     m.update = function (nxt) {
         if (m.tag == '' && nxt.tag == '') { // text node
-            m.DOM.data = nxt.DOM.data;
+            // text node contains attrs object with text property
+            if (m.attrs.text !== nxt.attrs.text)
+                m.DOM.data = nxt.DOM.data;
         }
         else if (m.tag != nxt.tag) { // if not
             // 1st assumption: If tag different => f5 entire tree.            
@@ -112,7 +145,7 @@ function VDOM(tag, attrs, events, childs) {
                         m.attrs[a] = nxt.attrs[a];
                         break;
                     case Changes.Delete:
-                        m.DOM.removeAttribute(a);
+                        _removeAttr(m.DOM, a);
                         m.attrs[a] = undefined;
                         break;
                 }
@@ -122,17 +155,16 @@ function VDOM(tag, attrs, events, childs) {
                 switch (edif[p]) {
                     case Changes.Create:
                     case Changes.Update:
-                        m.DOM.removeEventListener(p, m.events[p]);
-                        m.events[p] = nxt.events[p].bind(m.Lode);
-                        m.DOM.addEventListener(p, m.events[p]);
+                        _removeEvent(m.DOM, p, m.events[p]);
+                        m.events[p] = nxt.events[p];
+                        _addEvent(m.DOM, p, m.events[p]);
                         break;
                     case Changes.Delete:
-                        m.DOM.removeEventListener(p, m.events[p]);
+                        _removeEvent(m.DOM, p, m.events[p]);
                         m.events[p] = undefined;
                         break;
                 }
             }
-
 
             var empty = [];
             var nLen = (m.childs || empty).length;
