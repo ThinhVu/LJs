@@ -11,6 +11,7 @@ var l = function (tag, attrs, events, childs) {
     Lode.call(lodeInstance, tag, attrs, events, childs);
     // invoke specified constructor
     _lodeCtors[tag].call(lodeInstance);
+    var lodeInstanceVDOM = lodeInstance.VDOM;
     return lodeInstance;
 };
 

@@ -174,8 +174,9 @@ function VDOM(tag, attrs, events, childs) {
             // - old DOM have at least one child with key attr
             // - no duplicate child key in both old and new dom
             var keyed = nLen && m.childs[0].attrs && m.childs[0].attrs.hasOwnProperty('key') &&
-                _uniqueChildKey(m) && _isChildNoDuplicateKey(nxt);
+                _uniqueChildKey(m.childs) && _uniqueChildKey(childs);
             if (keyed) {
+                console.log('creating flagment');
                 var frag = document.createDocumentFragment();
                 frag.appendChild(m.DOM);
                 // 2nd assumption: keyed children node diffing.
@@ -208,7 +209,7 @@ function VDOM(tag, attrs, events, childs) {
                             m.DOM.insertBefore(newKeys[key].DOM, m.childs[0].DOM);
                         } else {
                             // insert at the middle or the last
-                            m.DOM.insertBefore(newKeys[key].DOM, m.childs[i - 1].DOM.nextSibling || _);
+                            m.DOM.insertBefore(newKeys[key].DOM, m.childs[i - 1].DOM.nextSibling);
                         }
                         m.childs.splice(i, 0, newKeys[key]);
                     }
