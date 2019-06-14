@@ -8,33 +8,42 @@
     <script src='./core/vdom.js'></script>
     <script src='./core/lode.js'></script>
     <script src='./core/l.js'></script>
-    <script src='./samples/todo.js'></script>        
+    <script src='./samples/todo.js'></script>
+    <style>
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        todo-item {
+            padding: 5px;
+            background-color: white;
+            border: 1px solid gray;
+            display: table;
+            margin: 1px 0;
+        }
+
+        todo-item:hover {
+            background-color: #ccc;
+            color: white;
+        }
+
+        todo-item > li > span {
+            display: inline-block;
+            width: 180px;
+        }
+
+        todo-item > li > button {
+            display: inline-block;
+            border-radius: 5px;
+            border: 2px;
+            background-color: transparent;
+        }
+    </style> 
 </head>
 <body>
     <div>
         <h1>LodeJs</h1>
-    </div>
-    <div>
-        <h3>TODO</h3>
-        <ul>
-            <li>In input event handler of input, entire redraw is invoked <br/>
-                => todo-item-list will be diff by keyed method<br/>
-                => FlagmentDocument will be create every frame<br/>
-                => decrease perfomance.
-                <br/>
-                If redraw is not invoked in input event handler<br/>
-                => value attr of input element will not be updated.<br/>
-                => so on the first time the user click to "Add todo"<br/>
-                => the value attr of input will be changed to ""<br/>
-                <br>
-                If the user continue to change the input (for e.g: add another item)<br/>
-                The value of input is changed, but the value attr is not update (still "")<br/>
-                Now if the user click to "Add todo" button, the value attr of input will be set to ""<br/>
-                For the next diffing, both current and next value of input is ""<br/>
-                Nothing changed, so update request won't be sent to the DOM tree<br/>
-                The result is input value won't be reset.
-            </li>
-        </ul>
     </div>
     <div id='app'></div>
 </body>
