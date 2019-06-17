@@ -8,7 +8,38 @@
     <script src='./core/vdom.js'></script>
     <script src='./core/lode.js'></script>
     <script src='./core/l.js'></script>
-    <script src='./samples/todo.js'></script>        
+    <script src='./samples/todo.js'></script>
+    <style>
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        todo-item {
+            padding: 5px;
+            background-color: white;
+            border: 1px solid gray;
+            display: table;
+            margin: 1px 0;
+        }
+
+        todo-item:hover {
+            background-color: #ccc;
+            color: white;
+        }
+
+        todo-item > li > span {
+            display: inline-block;
+            width: 180px;
+        }
+
+        todo-item > li > button {
+            display: inline-block;
+            border-radius: 5px;
+            border: 2px;
+            background-color: transparent;
+        }
+    </style> 
 </head>
 <body>
     <div>

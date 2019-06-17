@@ -1,7 +1,12 @@
 l.register('todo-form', function(){
     this.template = function(a, e) {    
-        var todoInput = l('input', { type:'input', value: a.todo, placeholder: a.placeholder || '...' }, { input: e.onInput });
-        var addButton = l('button', null, e.onAdd && { click: e.onAdd }, l('', { text:'Add todo' }))
+        var todoInput = l('input', { 
+            type:'input', 
+            value: a.todo, 
+            placeholder: a.placeholder || '...' 
+        }, { input: e.onInput });
+
+        var addButton = l('button', null, { click: e.onAdd }, l('', { text:'Add todo' }))
         var todoForm = l('form', null, null, [todoInput, addButton]);
         return todoForm;
     }
@@ -9,7 +14,7 @@ l.register('todo-form', function(){
 
 l.register('todo-item', function(){
     this.template = function(a,e) {
-        var todoContent = l('', { text: a.todo });
+        var todoContent = l('span', null, null, [l('', { text: a.todo })]);
         var deleteButton = l('button', null, { click: function(event){ 
             e.onDeleteTodo(); 
         } }, l('', { text: 'X' }));
