@@ -21,7 +21,7 @@ var l = function (tag, data, childs) {
         return lodeInstance;
     }
     else {
-        throw tag + " is not existed!";
+        throw "'" + tag + "' element is not existed!";
     }
 };
 

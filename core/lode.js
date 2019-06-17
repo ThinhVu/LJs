@@ -27,6 +27,13 @@ function Lode(tagName, childs /* for nested-component */) {
         else {
             var attrNames = m.getAttributeNames();
             var eventNames = m.getEventNames();
+
+            for(var prop in data) {
+                if (attrNames.indexOf(prop) < 0 && eventNames.indexOf(prop) < 0) {
+                    throw "Element '" + tagName + "' doesn't support property named '" +  prop + "'!";
+                }
+            }
+
             // validate data
             // native element always ignore attr, event if you don't define it
             // so we only validate for custom element

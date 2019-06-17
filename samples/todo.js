@@ -1,7 +1,7 @@
-l.register('todo-form', function() {
-    // defined attribute
+l.register('el-todo-form', function() {
+    // defined attributes
     this.getAttributeNames = function() {
-        return ['todo', 'emptyAlertMsg'];
+        return ['newTodo', 'emptyAlertMsg'];
     }
     // defined events
     this.getEventNames = function() {
@@ -11,20 +11,19 @@ l.register('todo-form', function() {
     this.template = function(childs) {
         var todoInput = l('input', { 
             type:'input', 
-            value: this.attrs['todo'], 
-            placeholder: this.attrs['emptyAlertMsg'],
-            oninput: this.events['onTodoValueChanged']
+            value: this.attrs.newTodo, 
+            placeholder: this.attrs.emptyAlertMsg,
+            oninput: this.events.onTodoValueChanged
         });
-
-        var addButton = l('button', { onclick: this.events['onAddTodo'] }, lt('Add todo'));
-
+        var addButton = l('button', { onclick: this.events.onAddTodo }, lt('Add todo'));
         var todoForm = l('form', null, [todoInput, addButton]);
-
         return todoForm;
     }
 });
 
-l.register('todo-item', function(){
+l.register('el-todo-item', function(){
+    var m = this;
+
     this.getAttributeNames = function() {
         return ['todo'];
     }
@@ -34,11 +33,11 @@ l.register('todo-item', function(){
     }
 
     this.template = function(childs) {
-        var todoContent = l('span', null, lt(this.attrs['todo']));
+        var todoContent = l('span', null, lt(this.attrs.todo));
 
         var deleteButton = l('button', { 
-            click: function(event){ 
-                this.events['onDeleteTodo'](); 
+            onclick: function(event){ 
+                m.events['onDeleteTodo'](); 
             } 
         }, lt('X'));
 
@@ -48,7 +47,7 @@ l.register('todo-item', function(){
     }
 });
 
-l.register('todo-item-list', function(){
+l.register('el-todo-item-list', function(){
     this.getAttributeNames = function() {
         return ['todoList'];
     }
@@ -58,7 +57,7 @@ l.register('todo-item-list', function(){
     }
 
     this.template = function(childs) {
-        var totoList = this.attrs['todoList'];
+        var todoList = this.attrs['todoList'];
         var onDeleteEvent = this.events['onDeleteTodo'];
 
         //
@@ -70,9 +69,9 @@ l.register('todo-item-list', function(){
 
         //
         var todoItems = [];
-        for(var i = 0, len = totoList.length; i<len; ++i) {
-            var todoItem = l('todo-item', { 
-                todo: totoList[i],
+        for(var i = 0, len = todoList.length; i<len; ++i) {
+            var todoItem = l('el-todo-item', { 
+                todo: todoList[i],
                 onDeleteTodo: onDeleteTodoHandler(i)
             });
 
@@ -83,27 +82,26 @@ l.register('todo-item-list', function(){
     }
 });
 
-l.register('todo', function(){
+l.register('el-todo', function() {
     this.getAttributeNames = function() {
-        return ['todo', 'todoList'];
+        return ['newTodo', 'todoList', 'emptyAlertMsg'];
     }
 
     this.getEventNames = function() {
         return ['onInput', 'onAdd', 'onDeleteTodo'];
     }
 
-
     this.template = function(childs) {
-        var todoForm = l('todo-form', { 
-            todo: this.attrs['todo'],
-            emptyAlertMsg: this.attrs['emptyAlertMsg'],
-            onTodoValueChanged: this.events['onInput'],
-            onAddTodo: this.events['onAdd']
+        var todoForm = l('el-todo-form', { 
+            newTodo: this.attrs.newTodo,
+            emptyAlertMsg: this.attrs.emptyAlertMsg,
+            onTodoValueChanged: this.events.onInput,
+            onAddTodo: this.events.onAdd
         });
 
-        var todoItemList = l('todo-item-list', { 
-            todoList: this.attrs['todoList'], 
-            onDeleteTodo: this.events['onDeleteTodo']
+        var todoItemList = l('el-todo-item-list', { 
+            todoList: this.attrs.todoList, 
+            onDeleteTodo: this.events.onDeleteTodo
         });
 
         return l('div', null, [todoForm, todoItemList]);
@@ -111,30 +109,30 @@ l.register('todo', function(){
 });
 
 window.onload = function(){
-    var todoComponent;
-
+    var todoElement;
+    // state management
     var todoData = { 
-        todo: 'Hello there', 
+        newTodo: 'Hello there', 
         emptyAlertMsg: '<enter-msg-here>',
         todoList: [ 'Route', 'Ajax', 'Sample app' ], 
         onInput: function(event) { 
             event.preventDefault();
-            todoData.todo = event.target.value;
-            todoComponent.f5(todoData);
+            todoData.newTodo = event.target.value;
+            todoElement.f5(todoData);
         },
         onAdd: function(event) {
             event.preventDefault();
             todoData.todoList.push(todoData.todo);
-            todoData.todo = '';
-            todoComponent.f5(todoData);
+            todoData.newTodo = '';
+            todoElement.f5(todoData);
         },
         onDeleteTodo: function(i) {
             event.preventDefault();
             todoData.todoList.splice(i, 1);
-            todoComponent.f5(todoData);
+            todoElement.f5(todoData);
         }
     };
 
-    todoComponent = l('todo', todoData);
-    l.attach(document.getElementById('app'), todoComponent);
+    todoElement = l('el-todo', todoData);
+    l.attach(document.getElementById('app'), todoElement);
 }
