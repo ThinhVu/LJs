@@ -1,12 +1,4 @@
 var VDOM = (function() {
-    // detect whether an element is native or custom
-    var _isNativeElement = function(name) {
-        return _tags.indexOf(name) >= 0;
-    }
-    var _isCustomElement = function(name) {
-        return !_isNativeElement(name);
-    }
-    
     // add/remove attribute
     var _setAttr = (function(){
         // update attribute by setAttribute doesn't work for some specified attribute
@@ -35,12 +27,16 @@ var VDOM = (function() {
     var _addEvent = function(dom, name, ev) {
         if (_isCustomElement(dom.tagName.toLowerCase())) 
             return;
-        dom.addEventListener(name, ev);
+        dom.addEventListener(_getEventName(name), ev);
     }
+    
     var _removeEvent = function(dom, name, ev) {
-        dom.removeEventListener(name, ev);
+        dom.removeEventListener(_getEventName(name), ev);
     }
 
+    var _getEventName = function(fullyEventName) {
+        return fullyEventName.substr(2);
+    }
 
     // diffing
     var Changes = { None: 0, Create: 1, Update: 2, Delete: 3 };

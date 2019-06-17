@@ -2,55 +2,87 @@
  * @class
  * @constructor
  * @param {string} tag: a string specified Lode name.
- * @param {object} attrs: an object contain custom attribute of Lode
- * @param {object} events: an object contain custom event handler methods with context of Lode and 1st param is Event object
  * @param {Lode || Lode[] || Lode[Lode[...]]} childs: a Lode array, Lode will flatten childs
  */
-function Lode(tag, attrs, events, childs) {
+function Lode(tagName, childs /* for nested-component */) {
     var m = this;
-    m.tag = tag;
-    m.attrs = attrs;
-    m.events = events;
-    // flaten childs    
-    m.childs = [].concat.apply([], [childs]);
-    // eliminate null or undefined
-    var i = 0;
-    while(i < m.childs.length) {
-        if (m.childs[i] == null)
-            m.childs.splice(i, 1);
-        else
-            i++;
-    }
 
-    var _VDOM = undefined;
-    /**
-     * Refresh component, update changed to DOM
-     */
-    m.f5 = function () {
-        if (_VDOM == undefined) {
-            _VDOM = m.toVDOM();
+    // abstract methods
+    m.getAttributeNames = function() { throw "Not implemented!" };
+    m.getEventNames = function() { throw "Not implmented!" };
+    m.template = function (childs) { throw "Not impl" };
+
+    // initial custom element
+    // tagName
+    m.tagName = tagName;
+    
+    // attr, event
+    m.attrs = {};
+    m.events = {};
+    // validate input data
+    m.addData = function(data) {
+        if (_isTextNode(tagName)) {
+            m.attrs.text = data.text;
         }
         else {
-            var vdomNxt = m.toVDOM();
-            _VDOM.update(vdomNxt);
+            var attrNames = m.getAttributeNames();
+            var eventNames = m.getEventNames();
+            // validate data
+            // native element always ignore attr, event if you don't define it
+            // so we only validate for custom element
+            // and we also have an option to ignore attrs, events for custom element too.
+            // see l.configuration()
+            if (_isCustomElement(m.tagName)) {
+                for (var i=0; i<attrNames.length; ++i) {
+                    if (!data.hasOwnProperty(attrNames[i])) {
+                        throw "Attribute '" + attrNames[i] + "' is missing in '" + tagName + "' element.";
+                    }
+                }
+                for (var i=0; i<eventNames.length; ++i) {
+                    if (!data.hasOwnProperty(eventNames[i])) {
+                        throw "Event '" + eventNames[i] + "' is missing in '" + tagName + "' element";
+                    }
+                }
+            }
+
+            // add data into attributes and events
+            for(var prop in data) {
+                if (attrNames.indexOf(prop) >= 0) {
+                    m.attrs[prop] = data[prop];
+                }
+                else if (eventNames.indexOf(prop) >= 0) {
+                    m.events[prop] = data[prop];
+                }
+            }
         }
     }
+
+    // childs
+    if (childs !== undefined) {
+        m.childs = [].concat.apply([], [childs]);
+    }
+    else {
+        m.childs = [];
+    }
+
+    // VDOM
+    var _VDOM = undefined;
     /**
      * Get correspond Virtual DOM tree
      */
-    m.__defineGetter__('VDOM', function () {
-        if (_VDOM == undefined) {
-            _VDOM =  m.toVDOM();
+    Object.defineProperty(this, 'VDOM', {
+        get: function () {
+            if (_VDOM == undefined) {
+                _VDOM =  m.toVDOM();
+            }
+            return _VDOM;
+        },
+        set: function (value) {
+            if (value.Lode != m) {
+                value.Lode = m;
+            }
+            _VDOM = VDOM;
         }
-        return _VDOM;
-    });
-    /**
-     * Set virtual DOM
-     */
-    m.__defineSetter__('VDOM', function (VDOM) {
-        if (VDOM.Lode != m)
-            VDOM.Lode = m;
-        _VDOM = VDOM;
     });
     
     /**
@@ -62,27 +94,43 @@ function Lode(tag, attrs, events, childs) {
      * @param {Lode[]} childs: a Lode array
      * @returns {Lode} a Lode tree
      */
-    m.template = function (attrs, events, childs) { throw "Not impl" };
     m.toVDOM = function() {
-        var vdom;        
-        if (_tags.includes(this.tag)) {
-            // for html tag
-            vdom = new VDOM(m.tag, m.attrs, m.events, (m.childs || []).map(function(lode){ return lode.toVDOM()}));            
+        var vdom;
+        if (_isNativeElement(m.tagName)) {
+            vdom = new VDOM(m.tagName, m.attrs, m.events, getChildrenVDOM(m.childs));
         } else {
-            // custom tag
-            // nested VDOM
-            var nestedLodeTree = m.template(m.attrs, m.events, m.childs || []);
+            var nestedLodeTree = m.template(m.childs || []);
             var nestedVdomTree = new VDOM(
-                nestedLodeTree.tag, 
+                nestedLodeTree.tagName, 
                 nestedLodeTree.attrs, 
                 nestedLodeTree.events,
-                nestedLodeTree.childs.map(function(lode){ return lode.toVDOM() }));
+                getChildrenVDOM(nestedLodeTree.childs));
             
             nestedLodeTree.VDOM = nestedVdomTree;
             // Lode VDOM
-            vdom = new VDOM(m.tag, m.attrs, m.events, [nestedVdomTree]);
+            vdom = new VDOM(m.tagName, m.attrs, m.events, [nestedVdomTree]);
         }
         vdom.Lode = m;
         return vdom;
+    }
+
+    var getChildrenVDOM = function(childrens /* Lode[] */) {
+        return childrens.map(function(lode) { 
+            return lode.toVDOM();
+        });
+    };
+
+    /**
+     * Refresh component, update changed to DOM
+     */
+    m.f5 = function (data) {
+        m.addData(data);
+        if (_VDOM == undefined) {
+            _VDOM = m.toVDOM();
+        }
+        else {
+            var vdomNxt = m.toVDOM();
+            _VDOM.update(vdomNxt);
+        }
     }
 }
