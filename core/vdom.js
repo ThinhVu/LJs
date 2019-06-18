@@ -1,201 +1,181 @@
-var _attrs = { 'value': 'value' };
-var _setAttr = function (dom, name, val) {
-    if (_attrs.hasOwnProperty(name))
-        dom[_attrs[name]] = val;
-    else
-        dom.setAttribute(name, val);
-}
+var VDOM = (function() {
+    // add/remove attribute
+    var _setAttr = (function(){
+        // update attribute by setAttribute doesn't work for some specified attribute
+        // for example 'value'
+        // to change the attribute, we need to assign it directly into the object.
+        var _assignRequiredAttrs = [ 'value' ];
 
-var Changes = { None: 0, Create: 1, Update: 2, Delete: 3 };
-var _diff = function (now, nxt) {
-    var ps = {};
-    
-    for (var p in now) {
-        ps[p] = (!nxt.hasOwnProperty(p)) ? Changes.Delete :
-                (nxt[p] == now[p]) ? Changes.None : Changes.Update;
-    }
-
-    for (var p in nxt) {
-        if (!now.hasOwnProperty(p))
-            ps[p] = Changes.Create;
-    }
-
-    return ps;
-}
-
-/**
- * Ensure all item in object array has key property with unique value
- * @param {object} objs 
- */
-var _uniqueChildKey = function (objs /*object[]*/) {
-    var ks = {};
-    for (var i in objs) {
-        if (objs[i].attrs.key == undefined) return false; // no-key
-        if (ks.hasOwnProperty(objs[i].attrs.key)) return false; // duplicate key
-        ks[objs[i].attrs.key] = 0; // store key for next check
-    }
-    return true;
-}
-
-/**
- * @class
- * @constructor
- * @param {string} tag 
- * @param {object} attrs 
- * @param {object} events 
- * @param {VDOM[]} childs 
- */
-function VDOM(tag, attrs, events, childs) {
-    var m = this;
-    var _DOM = undefined; /*HTMLElement*/
-    m.tag = tag || ''; /*tag or text node*/
-
-    // adding attrs, events, childs
-    if (attrs != undefined) m.attrs = attrs;
-    if (events != undefined) {
-        m.events = {};
-        // TODO: Resolve binding problem
-        for (e in events) {
-            if (events[e] != undefined)
-                m.events[e] = events[e];
-        }
-    }
-    if (childs != undefined) {
-        m.childs = [].concat.apply([], [childs]);
-    }
-
-    // DOM getter, setter
-    m.__defineSetter__('DOM', function (dom/*HTMLElement */) {
-        _DOM = dom;
-        _DOM.VDOM = m;
-    });
-    m.__defineGetter__('DOM', function () {
-        if (_DOM == undefined) {
-            if (m.tag === '') {
-                // text vdom
-                _DOM = document.createTextNode(m.attrs.text);
+        return function (dom, name, attr) {
+            // skip adding attribute for custom element
+            if (_isCustomElement(dom.tagName.toLowerCase()))
+                return;
+            // check if directly assign is the only way to change the dom attribute
+            if (_assignRequiredAttrs.indexOf(name) >= 0) {
+                dom[name] = attr;
             }
-            else {
-                // tag vdom
-                _DOM = document.createElement(m.tag);
-                for (var a in m.attrs) _setAttr(_DOM, a, m.attrs[a]);
-                for (var e in m.events) _DOM.addEventListener(e, m.events[e].bind(m)); // binding problem??
-                for (var c in m.childs) _DOM.appendChild(m.childs[c].DOM);
+            else { // otherwise using setAttribute
+                dom.setAttribute(name, attr);
             }
-            _DOM.VDOM = m;
         }
-        return _DOM;
-    })
+    })();
+    var _removeAttr = function(dom, name) {
+        dom.removeAttribute(name);
+    }
+    
+    // event add/remove
+    var _addEvent = function(dom, name, ev) {
+        if (_isCustomElement(dom.tagName.toLowerCase())) 
+            return;
+        dom.addEventListener(_getEventName(name), ev);
+    }
+    
+    var _removeEvent = function(dom, name, ev) {
+        dom.removeEventListener(_getEventName(name), ev);
+    }
 
-    // update VDOM tree
-    m.update = function (nxt) {
-        if (m.tag == '' && nxt.tag == '') { // text node
-            m.DOM.data = nxt.DOM.data;
-        }
-        else if (m.tag != nxt.tag) { // if not
-            // 1st assumption: If tag different => f5 entire tree.
-            // Almost, if not all case it doesn't matter detach old node or attach new node first.  
-            var nxtSbl = m.DOM.nextSibling || undefined;
-    
-            m.parent.DOM.removeChild(m.DOM);
-            m.parent.DOM.insertBefore(nxt.DOM, nxtSbl);
-            
-            m.tag = nxt.tag;
-            m.attrs = nxt.attrs;
-            m.events = nxt.events; // TODO: events should bind to context of 
-            m.childs = nxt.childs;
-            m.DOM = nxt.DOM;
-        }
-        else {
-            // attribute diffing
-            var adif = _diff(m.attrs, nxt.attrs);
-            for (var a in adif) {
-                switch (adif[a]) {
-                    case Changes.Create:
-                    case Changes.Update:
-                        _setAttr(m.DOM, a, nxt.attrs[a]);
-                        m.attrs[a] = nxt.attrs[a];
-                        break;
-                    case Changes.Delete:
-                        m.DOM.removeAttribute(a);
-                        m.attrs[a] = undefined;
-                        break;
-                }
-            }
-            var edif = _diff(m.events, nxt.events);
-            for (var p in edif) {
-                switch (edif[p]) {
-                    case Changes.Create:
-                    case Changes.Update:
-                        m.DOM.removeEventListener(p, m.events[p]);
-                        m.events[p] = nxt.events[p]; /*binding problem*/
-                        m.DOM.addEventListener(p, m.events[p]);
-                        break;
-                    case Changes.Delete:
-                        m.DOM.removeEventListener(p, m.events[p]);
-                        m.events[p] = undefined;
-                        break;
-                }
-            }
-    
-            var nLen = (m.childs || []).length;
-            var nxtLen = (nxt.childs || []).length;
-    
-            // diffing by key if and only if:
-            // - old DOM have at least one child with key attr
-            // - no duplicate child key in both old and new dom
-            var keyed = ( 
-                   nLen
-                && m.childs[0].attrs 
-                && m.childs[0].attrs.hasOwnProperty('key') 
-                && _uniqueChildKey(m) 
-                && _uniqueChildKey(nxt)
-            );
+    var _getEventName = function(fullyEventName) {
+        return fullyEventName.substr(2);
+    }
 
-            if (keyed) {
-                var frag = document.createDocumentFragment();
-                frag.appendChild(m.DOM);
-                // 2nd assumption: keyed children node diffing.
-                // old_childs = [ {key:1, VDOM:..}, {key: 2, VDOM:..} ]
-                // new_childs = [ {key:3, VDOM:..}, {key: 1, VDOM:..}, {key:2, DOM:html}]
-                var oldKeys = {}; // { 1: VDOM, 2: VDOM, 3: VDOM}
-                var newKeys = {};
-                for (var i in m.childs) { oldKeys[m.childs[i].attrs.key] = m.childs[i]; }
-                for (var i in nxt.childs) { newKeys[nxt.childs[i].attrs.key] = nxt.childs[i]; }
-    
-                // remove childs element which doesn't appear in new childs DOM
-                for (var i in oldKeys) {
-                    if (!newKeys.hasOwnProperty(i)) {
-                        m.DOM.removeChild(oldKeys[i].DOM); // remove DOM
-                        m.childs.splice(m.childs.indexOf(oldKeys[i]), 1); // remove VDOM
-                    }
-                }
-    
-                // update or add new
-                // loop through nxt.childs because we need ordered childs
-                // if we loop through newKeys, order will be changed depend on key name.
-                for (var i in nxt.childs) {
-                    var key = nxt.childs[i].attrs.key;
-                    if (oldKeys.hasOwnProperty(key)) {
-                        oldKeys[key].update(newKeys[key]);
+    // diffing
+    var Changes = { None: 0, Create: 1, Update: 2, Delete: 3 };
+    var _diff = function (now, nxt) {
+        var ps = {};
+        for (var p in now) {
+            ps[p] = (!nxt.hasOwnProperty(p)) ? Changes.Delete :
+                    (nxt[p] == now[p]) ? Changes.None : Changes.Update;
+        }
+        for (var p in nxt) {
+            if (!now.hasOwnProperty(p))
+                ps[p] = Changes.Create;
+        }
+        return ps;
+    }
+
+    /**
+     * @class
+     * @constructor
+     * @param {string} tag 
+     * @param {object} attrs 
+     * @param {object} events 
+     * @param {VDOM[]} childs 
+     */
+    function _ctor(tag, attrs, events, childs) {
+        var m = this;
+        m.tag = tag || '';
+        m.attrs = attrs || {}; 
+        m.events = events || {};
+        m.childs = [];
+        if (undefined != childs) {
+            for(var i in childs) {
+                childs[i].parent = m;
+                m.childs.push(childs[i]);
+            }
+        }
+
+        var _DOM;
+        Object.defineProperty(this, 'DOM', {
+            get: function() {
+                // create if DOM is not defined yet
+                if (_DOM == undefined) {
+                    if ('' == this.tag) { // text VDOM
+                        _DOM = document.createTextNode(this.attrs.text || '');
                     }
                     else {
-                        // add new
-                        if (i == 0) { // insert at 1st position
-                            m.DOM.insertBefore(newKeys[key].DOM, m.childs[0].DOM);
-                        } else {
-                            // insert at the middle or the last
-                            m.DOM.insertBefore(newKeys[key].DOM, m.childs[i - 1].DOM.nextSibling || _);
+                        // tag vdom
+                        _DOM = document.createElement(this.tag);
+                        // only add the attributes & events for natives dom element
+                        // otherwise, skip
+                        if (_isNativeElement(tag)) {
+                            for (var a in this.attrs) {
+                                _setAttr(_DOM, a, this.attrs[a]);
+                            }
+                            for (var e in this.events) {
+                                _addEvent(_DOM, e, this.events[e]);
+                            }
                         }
-                        m.childs.splice(i, 0, newKeys[key]);
+                        for (var c in this.childs) {
+                            _DOM.appendChild(this.childs[c].DOM);
+                        }
+                    }
+                    // link the DOM to VDOM
+                    _DOM.VDOM = this;
+                }
+
+                return _DOM;
+            },
+            set: function(value) {
+                if (this != value.VDOM) {
+                    value.VDOM = this;
+                }
+                _DOM = value;
+            }
+        });
+
+        //
+        m.update = function (nxt) {
+            if (m.tag == '' && nxt.tag == '') {
+                // text node contains attrs object with text property
+                if (m.attrs.text !== nxt.attrs.text) {
+                    m.DOM.data = nxt.DOM.data;
+                }
+            }
+            else if (m.tag != nxt.tag) { // 1st assumption: If tag different => f5 entire tree. 
+                var nxtSbl = m.DOM.nextSibling || undefined;
+
+                m.parent.DOM.removeChild(m.DOM);
+                m.parent.DOM.insertBefore(nxt.DOM, nxtSbl);
+
+                m.tag = nxt.tag;
+                m.attrs = nxt.attrs;
+                m.events = nxt.events;
+                m.childs = nxt.childs;
+                m.DOM = nxt.DOM;
+            }
+            else { // same tag
+                // => diff attributes
+                var attrDiffs = _diff(m.attrs, nxt.attrs);
+                for (var a in attrDiffs) {
+                    switch (attrDiffs[a]) {
+                        case Changes.Create:
+                        case Changes.Update:
+                            _setAttr(m.DOM, a, nxt.attrs[a]);
+                            m.attrs[a] = nxt.attrs[a];
+                            break;
+                        case Changes.Delete:
+                            _removeAttr(m.DOM, a);
+                            m.attrs[a] = undefined;
+                            break;
                     }
                 }
-                // attach
-                m.parent.DOM.appendChild(frag);
-            }
-            else {
-                // naively implement
+
+                // => diff events
+                var eventDiffs = _diff(m.events, nxt.events);
+                for (var p in eventDiffs) {
+                    switch (eventDiffs[p]) {
+                        case Changes.Create:
+                        case Changes.Update:
+                            _removeEvent(m.DOM, p, m.events[p]);
+                            m.events[p] = nxt.events[p];
+                            _addEvent(m.DOM, p, m.events[p]);
+                            break;
+                        case Changes.Delete:
+                            _removeEvent(m.DOM, p, m.events[p]);
+                            m.events[p] = undefined;
+                            break;
+                    }
+                }
+
+                // => diff childrens
+                var empty = [];
+                var nLen = (m.childs || empty).length;
+                var nxtLen = (nxt.childs || empty).length;
+
                 if (nLen > nxtLen) {
+                    // in case next childrens less than current childrens 
+                    // => childrens has been removed
+                    // remove the childrens in the last position
                     var i = nLen - 1;
                     do {
                         m.DOM.removeChild(m.childs[i].DOM);
@@ -205,18 +185,21 @@ function VDOM(tag, attrs, events, childs) {
                     while (i > nxtLen)
                 }
                 else if (nLen < nxtLen) {
-                    // add
+                    // in case next childrens greater than current childrens
+                    // => new childrens has been added
+                    // add the childrens
                     for (var i = nLen; i < nxtLen; ++i) {
                         m.DOM.appendChild(nxt.childs[i].DOM);
                         m.childs.push(nxt.childs[i]);
                     }
                 }
-                // update
-                var min = nLen < nxtLen ? nLen : nxtLen;
-                for (var i = 0; i < min; ++i) {
+                // update the childrens
+                for (var i = 0, min = Math.min(nLen, nxtLen); i < min; ++i) {
                     m.childs[i].update(nxt.childs[i]);
                 }
             }
         }
     }
-}
+
+    return _ctor;
+})();

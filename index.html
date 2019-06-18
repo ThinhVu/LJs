@@ -7,9 +7,43 @@
     <script src='./core/env.js'></script>
     <script src='./core/vdom.js'></script>    
     <script src='./core/l.js'></script>
-    <script src='./samples/todo.js'></script>        
+    <script src='./samples/todo.js'></script>
+    <style>
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        el-todo-item {
+            padding: 5px;
+            background-color: white;
+            border: 1px solid gray;
+            display: table;
+            margin: 1px 0;
+        }
+
+        el-todo-item:hover {
+            background-color: #ccc;
+            color: white;
+        }
+
+        el-todo-item > li > span {
+            display: inline-block;
+            width: 180px;
+        }
+
+        el-todo-item > li > button {
+            display: inline-block;
+            border-radius: 5px;
+            border: 2px;
+            background-color: transparent;
+        }
+    </style> 
 </head>
 <body>
+    <div>
+        <h1>LodeJs</h1>
+    </div>
     <div id='app'></div>
 </body>
 </html>
