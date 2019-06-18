@@ -13,3 +13,9 @@ var _isNativeElement = function(name) {
 var _isCustomElement = function(name) {
     return !_isNativeElement(name) && _lodeCtors.hasOwnProperty(name);
 }
+
+var _flatten = function(arr) {
+    return arr.reduce(function (flat, toFlatten) {
+      return flat.concat(Array.isArray(toFlatten) ? _flatten(toFlatten) : toFlatten);
+    }, []);
+}

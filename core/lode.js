@@ -66,7 +66,11 @@ function Lode(tagName, childs /* for nested-component */) {
 
     // childs
     if (childs !== undefined) {
-        m.childs = [].concat.apply([], [childs]);
+        if (Array.isArray(childs)) {
+            m.childs = _flatten(childs);
+        } else {
+            m.childs = _flatten([childs]);
+        }
     }
     else {
         m.childs = [];
@@ -106,15 +110,13 @@ function Lode(tagName, childs /* for nested-component */) {
         if (_isNativeElement(m.tagName)) {
             vdom = new VDOM(m.tagName, m.attrs, m.events, getChildrenVDOM(m.childs));
         } else {
-            var nestedLodeTree = m.template(m.childs || []);
+            var nestedLodeTree = m.template(m.childs);
             var nestedVdomTree = new VDOM(
                 nestedLodeTree.tagName, 
                 nestedLodeTree.attrs, 
                 nestedLodeTree.events,
                 getChildrenVDOM(nestedLodeTree.childs));
-            
             nestedLodeTree.VDOM = nestedVdomTree;
-            // Lode VDOM
             vdom = new VDOM(m.tagName, m.attrs, m.events, [nestedVdomTree]);
         }
         vdom.Lode = m;

@@ -54,21 +54,6 @@ var VDOM = (function() {
     }
 
     /**
-     * Ensure all item in object array has key property with unique value
-     * @param {object} objs 
-     */
-    var _uniqueChildKey = function (objs /*object[]*/) {
-        var ks = {};
-        for (var i in objs) {
-            if (objs[i].attrs == undefined) return false; // no attr
-            if (objs[i].attrs.key == undefined) return false; // no-key
-            if (ks.hasOwnProperty(objs[i].attrs.key)) return false; // duplicate key
-            ks[objs[i].attrs.key] = 0; // store key for next check
-        }
-        return true;
-    }
-
-    /**
      * @class
      * @constructor
      * @param {string} tag 

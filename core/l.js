@@ -53,9 +53,7 @@ var getElementProperties = function(tag) {
     var elAttrs = [];
     var elEvents = [];
 
-    if (tag !== '') {
-        // closure???
-        // prepare attrs, events for native element
+    if (tag !== '') {        
         var el = document.createElement(tag);
         
         for(var prop in el) {

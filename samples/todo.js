@@ -8,7 +8,7 @@ l.register('el-todo-form', function() {
         return ['onTodoValueChanged', 'onAddTodo'];
     }
     // defined template
-    this.template = function(childs) {
+    this.template = function() {
         var todoInput = l('input', { 
             type:'input', 
             value: this.attrs.newTodo, 
@@ -32,7 +32,7 @@ l.register('el-todo-item', function(){
         return ['onDeleteTodo'];
     }
 
-    this.template = function(childs) {
+    this.template = function(childrens /*optional Lode[]*/) {
         var todoContent = l('span', null, lt(this.attrs.todo));
 
         var deleteButton = l('button', { 
@@ -41,7 +41,7 @@ l.register('el-todo-item', function(){
             } 
         }, lt('X'));
 
-        var todoItem = l('li', null, [todoContent, deleteButton]);
+        var todoItem = l('li', null, [todoContent, childrens, deleteButton]);
 
         return todoItem;
     }
@@ -51,29 +51,24 @@ l.register('el-todo-item-list', function(){
     this.getAttributeNames = function() {
         return ['todoList'];
     }
-
     this.getEventNames = function() {
         return ['onDeleteTodo'];
     }
-
-    this.template = function(childs) {
+    this.template = function() {
         var todoList = this.attrs['todoList'];
         var onDeleteEvent = this.events['onDeleteTodo'];
-
-        //
         var onDeleteTodoHandler = function(index) {
             return function(){ 
                 onDeleteEvent(index);
             }
         }
-
         //
         var todoItems = [];
-        for(var i = 0, len = todoList.length; i<len; ++i) {
+        for(var i = 0, len = todoList.length; i < len; ++i) {
             var todoItem = l('el-todo-item', { 
                 todo: todoList[i],
                 onDeleteTodo: onDeleteTodoHandler(i)
-            });
+            }, lt('(not done)'));
 
             todoItems.push(todoItem);
         }
@@ -81,6 +76,8 @@ l.register('el-todo-item-list', function(){
         return l('ul', null, todoItems);
     }
 });
+
+
 
 l.register('el-todo', function() {
     this.getAttributeNames = function() {
@@ -91,7 +88,7 @@ l.register('el-todo', function() {
         return ['onInput', 'onAdd', 'onDeleteTodo'];
     }
 
-    this.template = function(childs) {
+    this.template = function() {
         var todoForm = l('el-todo-form', { 
             newTodo: this.attrs.newTodo,
             emptyAlertMsg: this.attrs.emptyAlertMsg,
@@ -122,7 +119,7 @@ window.onload = function(){
         },
         onAdd: function(event) {
             event.preventDefault();
-            todoData.todoList.push(todoData.todo);
+            todoData.todoList.push(todoData.newTodo);
             todoData.newTodo = '';
             todoElement.f5(todoData);
         },
